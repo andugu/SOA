@@ -65,7 +65,7 @@
       popl %gs;
 
 #define EOI \
-      movb $ox20, %al;  \
+      movb $0x20, %al;  \
       outb %al, $0x20;
 
 #define ENOSYS 38       // Shortcut to avoid implementation of sys_ni_syscall(), always returns -38
