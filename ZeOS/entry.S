@@ -76,3 +76,17 @@ ENTRY(keyboard_handler)
       RESTORE_ALL;
       iret;
 
+ENTRY(system_call_handler)
+      SAVE_ALL;
+      cmpl $0, %eax;    // 0 <= system_call number <= MAX_SYSCALL
+      jl error;
+      cmpl $MAX_SYSCALL, %eax;
+      jg error;
+      call *sys_call_table(, %eax, 0x04);
+      jmp end;
+error:
+      movl $-38, %eax;  // Shortcut to avoid implementation of sys_ni_syscall(), always returns -38 (ENOSYS value)
+end:
+      movl %eax, 0x18(%esp);
+      RESTORE_ALL;
+      iret;
