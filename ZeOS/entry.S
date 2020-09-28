@@ -49,7 +49,7 @@
       pushl %ebx; \
       movl $__KERNEL_DS, %edx;    \
       movl %edx, %ds;           \
-      movl %edx, %es
+      movl %edx, %es;
 
 #define RESTORE_ALL \
       popl %ebx; \
@@ -64,8 +64,14 @@
       popl %fs; \
       popl %gs;
 
+#define EOI \
+      movb $ox20, %al;  \
+      outb %al, $0x20;
+
+
 ENTRY(keyboard_handler)
       SAVE_ALL;
+      EOI;
       call keyboard_routine;
       RESTORE_ALL;
       iret;
