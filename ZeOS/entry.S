@@ -68,6 +68,7 @@
       movb $ox20, %al;  \
       outb %al, $0x20;
 
+#define ENOSYS 38       // Shortcut to avoid implementation of sys_ni_syscall(), always returns -38
 
 ENTRY(keyboard_handler)
       SAVE_ALL;
@@ -85,7 +86,7 @@ ENTRY(system_call_handler)
       call *sys_call_table(, %eax, 0x04);
       jmp end;
 error:
-      movl $-38, %eax;  // Shortcut to avoid implementation of sys_ni_syscall(), always returns -38 (ENOSYS value)
+      movl $-ENOSYS, %eax;
 end:
       movl %eax, 0x18(%esp);
       RESTORE_ALL;
