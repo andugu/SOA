@@ -15,8 +15,6 @@ extern Register idtR;
 void setInterruptHandler(int vector, void (*handler)(), int maxAccessibleFromPL);
 void setTrapHandler(int vector, void (*handler)(), int maxAccessibleFromPL);
 
-void keyboard_routine();
-
 void setIdt();
 
 #endif  /* __INTERRUPT_H__ */
