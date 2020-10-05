@@ -84,17 +84,44 @@ ENTRY(clock_handler)
       RESTORE_ALL;
       iret;
 
-ENTRY(system_call_handler)
-      SAVE_ALL;
-      cmpl $0, %eax;    // 0 <= system_call number <= MAX_SYSCALL
-      jl error;
-      cmpl $MAX_SYSCALL, %eax;
-      jg error;
-      call *sys_call_table(, %eax, 0x04);
-      jmp end;
-error:
-      movl $-ENOSYS, %eax;
-end:
-      movl %eax, 0x18(%esp);
-      RESTORE_ALL;
-      iret;
+ENTRY(syscall_handler_sysenter)
+      push $__USER_DS
+      push %EBP               // User stack address
+      pushfl
+      push $__USER_CS
+      push 4(%EBP)            // User return address
+      SAVE_ALL
+      cmpl $0, %EAX
+      jl sysenter_err
+      cmpl $MAX_SYSCALL, %EAX
+      jg sysenter_err
+      call *sys_call_table(, %EAX, 0x04)
+      jmp sysenter_fin
+sysenter_err:
+      movl $-ENOSYS, %EAX
+sysenter_fin:
+      movl %EAX, 0x18(%ESP)
+      RESTORE_ALL
+      movl (%ESP), %EDX       // Return address
+      movl 12(%ESP), %ECX     // User stack address
+      sti                     // Enable interrupts again
+      sysexit
+
+/*    8(ebp)  - msr
+      12(ebp) - value
+      ------------------
+      MSR[ecx] = edx:eax
+*/
+ENTRY(writeMSR)
+      pushl %eax              // Save context
+      pushl %ecx
+      pushl %edx
+      movl 8(%ebp), %ecx      // Move msr number
+      movl $0, %edx           // We assume no 64bit @ on a 32bit sysexit
+      movl 12(%ebp), %eax     // Move value to lower part of msr
+      popl %edx               // Restore context
+      popl %ecx
+      popl %eax
+      ret
+
+

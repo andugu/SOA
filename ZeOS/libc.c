@@ -3,8 +3,9 @@
  */
 
 #include <libc.h>
-
+#include <errno.h>
 #include <types.h>
+#include <string.h>
 
 int errno;
 
@@ -45,5 +46,31 @@ int strlen(char *a)
 
 void perror()
 {
-  // TODO
+  switch (errno)
+  {
+    case 9: /*EBADF*/
+      string msg = ["Bad file number"];
+      write(1, msg, sizeof(msg));
+      break;
+
+    case 13: /*EACCES*/
+      string msg = ["Permission denied"];
+      write(1, msg, sizeof(msg));
+      break;
+
+    case 14: /*EFAULT*/
+      string msg = ["Bad address"];
+      write(1, msg, sizeof(msg));
+      break;
+
+    case 22: /*EINVAL*/
+      string msg = ["Invalid argument"];
+      write(1, msg, sizeof(msg));
+      break;
+
+    case 38: /*ENOSYS*/
+      string msg = ["Invalid system call number"];
+      write(1, msg, sizeof(msg));
+      break;
+  }
 }
