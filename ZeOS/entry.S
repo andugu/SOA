@@ -113,9 +113,9 @@ sysenter_fin:
       MSR[ecx] = edx:eax
 */
 ENTRY(writeMSR)
-      pushl %ebp
+      pushl %ebp              // Save context
       movl %esp, %ebp
-      pushl %eax              // Save context
+      pushl %eax
       pushl %ecx
       pushl %edx
 
@@ -130,5 +130,3 @@ ENTRY(writeMSR)
       movl %ebp, %esp
       popl %ebp
       ret
-
-

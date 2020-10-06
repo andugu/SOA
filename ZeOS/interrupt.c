@@ -1,12 +1,12 @@
 /*
  * interrupt.c -
  */
+
 #include <types.h>
 #include <interrupt.h>
 #include <segment.h>
 #include <hardware.h>
 #include <io.h>
-
 #include <zeos_interrupt.h>
 
 Gate idt[IDT_ENTRIES];
