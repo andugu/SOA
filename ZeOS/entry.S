@@ -113,15 +113,22 @@ sysenter_fin:
       MSR[ecx] = edx:eax
 */
 ENTRY(writeMSR)
+      pushl %ebp
+      movl %esp, %ebp
       pushl %eax              // Save context
       pushl %ecx
       pushl %edx
+
       movl 8(%ebp), %ecx      // Move msr number
       movl $0, %edx           // We assume no 64bit @ on a 32bit sysexit
       movl 12(%ebp), %eax     // Move value to lower part of msr
+      wrmsr
+      
       popl %edx               // Restore context
       popl %ecx
       popl %eax
+      movl %ebp, %esp
+      popl %ebp
       ret
 
 

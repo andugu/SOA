@@ -3,8 +3,6 @@
  */
 
 #include <asm.h>
-#include <segment.h>
-#include <libc.h>
 
 /*	0(ebp)  - esp anterior
 	4(ebp)  - @ ret
@@ -14,6 +12,9 @@
 	...
 */
 ENTRY(write)
+	pushl %ebp
+	movl %esp, %ebp
+
 	pushl %ebx					// Save context
 	pushl %ecx
 	pushl %edx
@@ -23,42 +24,54 @@ ENTRY(write)
 	movl 16(%ebp), %edx
 	movl $4, %eax				// Syscall id
 	pushl %ecx					// Save ecx, edx in user stack
-	pushl %edx
-	pushl write_return_address 	// Store return address
+	pushl %esi
+	lea write_return_address, %esi
+	pushl %esi 	// Store return address
 	pushl %ebp					// Create fake dynamic link
 	movl %esp, %ebp
 	sysenter 					// Enter the system
 write_return_address:
 	popl %ebp					// Restore context
-	popl
-	popl %edx
+	addl $4, %esp
+	popl %esi
 	popl %ecx
 	popl %edx
 	popl %ecx
 	popl %ebx
-	cmpl %eax, $0				// If result is -, move to errno
+	
+	cmpl $0, %eax				// If result is -, move to errno
 	jge write_end
-	movl -%eax, errno
+	//imull $-1 // COMPTE edx es modifica
+	movl %eax, errno
 	movl $-1, %eax
 write_end:
+	movl %ebp, %esp
+	popl %ebp
 	ret
 
 ENTRY(gettime)
+	pushl %ebp
+	movl %esp, %ebp
 	movl $10, %eax				// Syscall id
 	pushl %ecx					// Save ecx, edx in user stack
 	pushl %edx
-	pushl gettime_return_address// Store return address
+	lea gettime_return_address, %edx
+	pushl %edx// Store return address
 	pushl %ebp					// Create fake dynamic link
 	movl %esp, %ebp
 	sysenter 					// Enter the system
+
 gettime_return_address:
 	popl %ebp					// Restore context
-	popl
+	addl $4, %esp
 	popl %edx
 	popl %ecx
-	cmpl %eax, $0				// If result is -, move to errno
+	cmpl $0, %eax				// If result is -, move to errno
 	jge gettime_end
-	movl -%eax, errno
+	//imull $-1 // COMPTE edx es modifica
+	movl %eax, errno
 	movl $-1, %eax
 gettime_end:
+	movl %ebp, %esp
+	popl %ebp
 	ret

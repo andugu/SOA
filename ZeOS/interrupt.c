@@ -73,8 +73,6 @@ void setTrapHandler(int vector, void (*handler)(), int maxAccessibleFromPL)
   idt[vector].highOffset      = highWord((DWord)handler);
 }
 
-int zeos_ticks;
-
 void keyboard_handler();
 
 void clock_handler();
@@ -82,6 +80,8 @@ void clock_handler();
 void syscall_handler_sysenter();
 
 void writeMSR(int msr, int value);
+
+int zeos_ticks = 0;
 
 void setIdt()
 {
@@ -94,9 +94,9 @@ void setIdt()
   setInterruptHandler(32, clock_handler, 0);
   setInterruptHandler(33, keyboard_handler, 0);
 
-  writeMSR(0x174, KERNEL_CS);
+  writeMSR(0x174, __KERNEL_CS);
   writeMSR(0x175, INITIAL_ESP);
-  writeMSR(0x176, void syscall_handler_sysenter());
+  writeMSR(0x176, (int) syscall_handler_sysenter);
 
   set_idt_reg(&idtR);
 }

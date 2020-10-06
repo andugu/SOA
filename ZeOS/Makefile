@@ -25,7 +25,6 @@ LDFLAGS = -g -melf_i386
 SYSOBJ = \
 	interrupt.o \
 	entry.o \
-	wrapper.o \
 	sys_call_table.o \
 	io.o \
 	sched.o \
@@ -41,6 +40,7 @@ LIBZEOS = -L . -l zeos
 #add to USROBJ any object files required to complete the user program
 USROBJ = \
 	libc.o \
+	wrapper.o \
 	# libjp.a \
 
 all:zeos.bin
@@ -65,7 +65,7 @@ bootsect.s: bootsect.S
 entry.s: entry.S $(INCLUDEDIR)/asm.h $(INCLUDEDIR)/segment.h
 	$(CPP) $(ASMFLAGS) -o $@ $<
 
-wrapper.s: wrapper.S $(INCLUDEDIR)/asm.h $(INCLUDEDIR)/segment.h
+wrapper.s: wrapper.S $(INCLUDEDIR)/asm.h
 	$(CPP) $(ASMFLAGS) -o $@ $<
 
 sys_call_table.s: sys_call_table.S $(INCLUDEDIR)/asm.h $(INCLUDEDIR)/segment.h

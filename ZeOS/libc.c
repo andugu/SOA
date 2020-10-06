@@ -5,11 +5,10 @@
 #include <libc.h>
 #include <errno.h>
 #include <types.h>
-#include <string.h>
 
 int errno;
 
-void itoa(int a, char *b)
+void itoa(int a, char *b) //Converteix integer a char*
 {
   int i, i1;
   char c;
@@ -44,33 +43,28 @@ int strlen(char *a)
   return i;
 }
 
-void perror()
+void perror(void)
 {
   switch (errno)
   {
     case 9: /*EBADF*/
-      string msg = ["Bad file number"];
-      write(1, msg, sizeof(msg));
+      write(1, "Bad file number", sizeof("Bad file number"));
       break;
 
     case 13: /*EACCES*/
-      string msg = ["Permission denied"];
-      write(1, msg, sizeof(msg));
+      write(1, "Permission denied", sizeof("Permission denied"));
       break;
 
     case 14: /*EFAULT*/
-      string msg = ["Bad address"];
-      write(1, msg, sizeof(msg));
+      write(1, "Bad address", sizeof("Bad address"));
       break;
 
     case 22: /*EINVAL*/
-      string msg = ["Invalid argument"];
-      write(1, msg, sizeof(msg));
+      write(1, "Invalid argument", sizeof("Invalid argument"));
       break;
 
     case 38: /*ENOSYS*/
-      string msg = ["Invalid system call number"];
-      write(1, msg, sizeof(msg));
+      write(1, "Invalid system call number", sizeof("Invalid system call number"));
       break;
   }
 }
