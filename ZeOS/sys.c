@@ -49,11 +49,13 @@ int sys_write(int fd, char * buffer, int size)
 {
 	if (check_fd(fd, ESCRIPTURA) != 0) return check_fd(fd, ESCRIPTURA);
 	if (buffer == NULL) return -14; /*EFAULT*/
-	if (size < 0 || size > sizeof(buffer)) return -22; /*EINVAL*/
+	//if (size < 0 || size > sizeof(buffer)) return -22; /*EINVAL*/
+	if (size < 0) return -22; /*EINVAL*/
 
 	char kernel_buffer[size];
 	if (copy_from_user(buffer, kernel_buffer, size) < 0) return -1;
 	return sys_write_console(kernel_buffer, size);
+
 }
 
 int sys_gettime()

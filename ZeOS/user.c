@@ -9,7 +9,9 @@ int __attribute__ ((__section__(".text.main")))
      /* __asm__ __volatile__ ("mov %0, %%cr3"::"r" (0) ); */
 
 	int t = gettime();
-	write(1, "0 \n", strlen("0 \n"));
+	if (write(1, "0 \n", -1) < 0) perror();
+	
+	write(1, "HolaHoLa \n", strlen("HolaHoLa \n"));
 
   	while(1)
   	{
