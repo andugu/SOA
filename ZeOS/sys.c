@@ -49,18 +49,11 @@ int sys_write(int fd, char * buffer, int size)
 {
 	if (check_fd(fd, ESCRIPTURA) != 0) return check_fd(fd, ESCRIPTURA);
 	if (buffer == NULL) return -14; /*EFAULT*/
-	if (size < 0) return -22; /*EINVAL*/
-	// int copy_from_user(void *start, void *dest, int size); -> en utils.h
-	char* buff[size];
-	if (copy_from_user(buffer, buff, size) < 0) return -1;
-	printk("   size: ");
-	char* a[20];	
-	itoa(size, a);
-	printk(a);
-	printk("   size buffer: ");	
-	itoa(sizeof(buffer), a);
-	printk(a);
-	return sys_write_console(buff, size);
+	if (size < 0 || size > sizeof(buffer)) return -22; /*EINVAL*/
+
+	char kernel_buffer[size];
+	if (copy_from_user(buffer, kernel_buffer, size) < 0) return -1;
+	return sys_write_console(kernel_buffer, size);
 }
 
 int sys_gettime()

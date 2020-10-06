@@ -51,7 +51,8 @@ write_return_address:
 	jge write_end
 
 	pushl %edx
-	imull $-1 					// %eax * -1 (%edx is also modified)
+	movl $-1, %edx
+	imull %edx 					// %eax * -1 (%edx is also modified)
 	popl %edx
 	movl %eax, errno 			// Move error code to errno
 	movl $-1, %eax				// Set return value to -1
@@ -88,7 +89,8 @@ gettime_return_address:
 	jge gettime_end
 
 	pushl %edx
-	imull $-1					// %eax * -1 (%edx is also modified)
+	movl $-1, %edx
+	imull %edx 					// %eax * -1 (%edx is also modified)
 	popl %edx
 	movl %eax, errno 			// Move error code to errno
 	movl $-1, %eax 				// Set return value to -1
