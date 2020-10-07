@@ -4,8 +4,8 @@
 
 ### Autors
 
-Josep Maria Olivé (josep.maria.olive.fernandez)
-Albert Vilardell  (albert.vilardell.barnosell)
+* Albert Vilardell  (albert.vilardell.barnosell)
+* Josep Maria Olivé (josep.maria.olive.fernandez)
 
 #### Warnings
 
