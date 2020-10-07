@@ -48,23 +48,23 @@ void perror(void)
   switch (errno)
   {
     case 9: /*EBADF*/
-      write(1, "Bad file number", sizeof("Bad file number"));
+      write(1, "Bad file number\n", strlen("Bad file number\n"));
       break;
 
     case 13: /*EACCES*/
-      write(1, "Permission denied", sizeof("Permission denied"));
+      write(1, "Permission denied\n", strlen("Permission denied\n"));
       break;
 
     case 14: /*EFAULT*/
-      write(1, "Bad address", sizeof("Bad address"));
+      write(1, "Bad address\n", strlen("Bad address\n"));
       break;
 
     case 22: /*EINVAL*/
-      write(1, "Invalid argument", sizeof("Invalid argument"));
+      write(1, "Invalid argument\n", strlen("Invalid argument\n"));
       break;
 
     case 38: /*ENOSYS*/
-      write(1, "Invalid system call number", sizeof("Invalid system call number"));
+      write(1, "Invalid system call number\n", strlen("Invalid system call number\n"));
       break;
   }
 }
