@@ -15,6 +15,8 @@
 
 extern int zeos_ticks;
 
+char kernel_buffer[1024];
+
 int check_fd(int fd, int permissions)
 {
   if (fd!=1) return -9; /*EBADF*/
@@ -51,10 +53,15 @@ int sys_write(int fd, char * buffer, int size)
 	if (buffer == NULL) return -14; /*EFAULT*/
 	if (size < 0) return -22; /*EINVAL*/
 
-	char kernel_buffer[size];
+	int err;
+	while (size > 1024) {
+		if (copy_from_user(buffer, kernel_buffer, 1024) < 0) return -1;
+		if ((err = sys_write_console(kernel_buffer, 1024)) < 0) return err;
+		buffer += 1024;
+		size -= 1024;
+	}
 	if (copy_from_user(buffer, kernel_buffer, size) < 0) return -1;
 	return sys_write_console(kernel_buffer, size);
-
 }
 
 int sys_gettime()
