@@ -58,7 +58,7 @@ void init_idle (void)
 	list_del(first_free);
 	// TODO: 4. Init a execution context?
 	pcb->PID = 0;
-	pcb->dir_pages_baseAddr = allocate_DIR(pcb);
+	allocate_DIR(pcb);
 
 	idle_task = pcb;
 }
@@ -69,10 +69,10 @@ void init_task1(void)
 	struct task_struct *pcb        = list_head_to_task_struct(first_free);
 	list_del(first_free);
 
-	pcb->PID = 1;
-	pcb->dir_pages_baseAddr = allocate_DIR(pcb);
+	pcb->PID = 1;	
+	pcb->dir_pages_baseAddr = allocate_DIR(pcb); //No s'ha de fer l'assignació
 
-	// TODO: 3. Address space?
+	// TODO: 3. Address space? -------> set_user_pages(pcb);
 	// TODO: 4. TSS?
 
 	set_cr3(pcb->dir_pages_baseAddr);
