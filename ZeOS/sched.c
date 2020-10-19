@@ -12,6 +12,8 @@ union task_union task[NR_TASKS]
 struct list_head freequeue;
 struct list_head readyqueue;
 
+struct task_struct *idle_task;
+
 extern struct list_head blocked;
 
 
@@ -51,12 +53,29 @@ void cpu_idle(void)
 
 void init_idle (void)
 {
+	struct list_head   *first_free = list_first(&freequeue);
+	struct task_struct *pcb        = list_head_to_task_struct(first_free);
+	list_del(first_free);
+	// TODO: 4. Init a execution context?
+	pcb->PID = 0;
+	pcb->dir_pages_baseAddr = allocate_DIR(pcb);
 
+	idle_task = pcb;
 }
 
 void init_task1(void)
 {
+	struct list_head   *first_free = list_first(&freequeue);
+	struct task_struct *pcb        = list_head_to_task_struct(first_free);
+	list_del(first_free);
 
+	pcb->PID = 1;
+	pcb->dir_pages_baseAddr = allocate_DIR(pcb);
+
+	// TODO: 3. Address space?
+	// TODO: 4. TSS?
+
+	set_cr3(pcb->dir_pages_baseAddr);
 }
 
 
