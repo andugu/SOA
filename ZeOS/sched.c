@@ -70,10 +70,10 @@ void init_task1(void)
 	list_del(first_free);
 
 	pcb->PID = 1;	
-	pcb->dir_pages_baseAddr = allocate_DIR(pcb); //No s'ha de fer l'assignació
+	allocate_DIR(pcb);
 
-	// TODO: 3. Address space? -------> set_user_pages(pcb);
-	// TODO: 4. TSS?
+	set_user_pages(pcb);
+	tss.esp0 = (int)(&freequeue + KERNEL_STACK_SIZE); //new_task->stack = &freequeue + KERNEL_STACK_SIZE
 
 	set_cr3(pcb->dir_pages_baseAddr);
 }
