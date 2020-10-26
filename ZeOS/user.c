@@ -39,7 +39,7 @@ int __attribute__ ((__section__(".text.main")))
 
 	pid = getpid();
 	write(1, "My pid is:", strlen("My pid is:"));
-	char []a;
+	char a[sizeof(int)];
 	itoa(pid, a);
 	write(1, a, strlen(a));
 	write(1, "\n", strlen("\n"));
