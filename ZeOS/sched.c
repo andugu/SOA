@@ -134,6 +134,7 @@ void task_switch(union task_union* t)
 
 void inner_task_switch(union task_union* t)
 {
+	tss.esp0 = KERNEL_ESP(t);
 	writeMSR(0x175, (int) KERNEL_ESP(t));
 	set_cr3(t->task->dir_pages_baseAddr);
 
