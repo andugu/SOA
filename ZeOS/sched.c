@@ -62,10 +62,10 @@ void init_idle (void)
 
 	idle_task = pcb;
 
-	union task_union *a = (union task_union)pcb;
-	a->stack[a.stack.size() - 1] = (DWord) cpu_idle();
-	a->stack[a.stack.size() - 2] = 0;
-	pcb->kernel_esp = &a.stack[a.stack.size() - 2];
+	union task_union *a = (union task_union*)pcb;
+	a->stack[KERNEL_STACK_SIZE - 1] = (unsigned long int) &cpu_idle;
+	a->stack[KERNEL_STACK_SIZE - 2] = 0;
+	pcb->kernel_esp = &a->stack[KERNEL_STACK_SIZE - 2];
 
 	/*__asm__ __volatile__(
 		"movl %0, %%esp\n\t"
@@ -87,7 +87,7 @@ void init_task1(void)
 
 	set_user_pages(pcb);
 
-	union task_union *a = (union task_union)pcb;
+	union task_union *a = (union task_union*)pcb;
 	tss.esp0 = KERNEL_ESP(a);
 
 	set_cr3(pcb->dir_pages_baseAddr);
@@ -118,25 +118,27 @@ struct task_struct* current()
 void task_switch(union task_union* t)
 {
 	__asm__ __volatile__(
-		"pushl %%esi\n\t"
-		"pushl %%edi\n\t"
-		"pushl %%ebx\n\t"
+		"pushl %esi\n\t"
+		"pushl %edi\n\t"
+		"pushl %ebx\n\t"
 		);
 
 	inner_task_switch(t);
 
 	__asm__ __volatile__(
-		"popl %%ebx\n\t"
-		"popl %%edi\n\t"
-		"popl %%esi\n\t"
+		"popl %ebx\n\t"
+		"popl %edi\n\t"
+		"popl %esi\n\t"
 		);
 }
+
+void writeMSR(int msr, int value);
 
 void inner_task_switch(union task_union* t)
 {
 	tss.esp0 = KERNEL_ESP(t);
 	writeMSR(0x175, (int) KERNEL_ESP(t));
-	set_cr3(t->task->dir_pages_baseAddr);
+	set_cr3(t->task.dir_pages_baseAddr);
 
 	__asm__ __volatile__(
 		"movl %%ebp, %0\n\t"
