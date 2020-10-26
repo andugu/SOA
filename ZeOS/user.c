@@ -2,17 +2,8 @@
 
 int pid;
 
-int __attribute__ ((__section__(".text.main")))
-  main(void)
+void test_write_gettime()
 {
-    /* Next line, tries to move value 0 to CR3 register. This register is a privileged one, and so it will raise an exception */
-     /* __asm__ __volatile__ ("mov %0, %%cr3"::"r" (0) ); */
-
-	write(1, "    User program reached...\n", strlen("    User program reached...\n"));
-
-	// Losing time
-	for(int i = 0; i < 50000000; ++i);
-
 	write(0, "aaa", strlen("aaa")); // EBADF
 	write(1, "Perror content is: ", strlen("Perror content is: "));
 	perror();
@@ -32,6 +23,23 @@ int __attribute__ ((__section__(".text.main")))
 	itoa(time, time_char);
 	write(1, time_char, strlen(time_char));
 
+	write(1, "\n", strlen("\n"));
+}
+
+int __attribute__ ((__section__(".text.main")))
+  main(void)
+{
+    /* Next line, tries to move value 0 to CR3 register. This register is a privileged one, and so it will raise an exception */
+     /* __asm__ __volatile__ ("mov %0, %%cr3"::"r" (0) ); */
+
+	write(1, "    User program reached...\n", strlen("    User program reached...\n"));
+
+	// Losing time
+	for(int i = 0; i < 50000000; ++i);
+
+	pid = getpid();
+	write(1, "My pid is:", strlen("My pid is:"));
+	write(1, itoa(pid), strlen(itoa(pid)));
 	write(1, "\n", strlen("\n"));
 
 	write(1, "Going to infinite loop, bye! :)", strlen("Going to infinite loop, bye! :)"));

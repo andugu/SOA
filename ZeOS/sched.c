@@ -56,11 +56,24 @@ void init_idle (void)
 	struct list_head   *first_free = list_first(&freequeue);
 	struct task_struct *pcb        = list_head_to_task_struct(first_free);
 	list_del(first_free);
-	// TODO: 4. Init a execution context?
+
 	pcb->PID = 0;
 	allocate_DIR(pcb);
 
 	idle_task = pcb;
+
+	union task_union *a = (union task_union)pcb;
+	a->stack[a.stack.size() - 1] = (DWord) cpu_idle();
+	a->stack[a.stack.size() - 2] = 0;
+	pcb->kernel_esp = &a.stack[a.stack.size() - 2];
+
+	/*__asm__ __volatile__(
+		"movl %0, %%esp\n\t"
+		"pop %%ebp\n\t"
+		"ret\n\t"
+		: // no output
+		: "g" (pcb->kernel_esp));
+	*/
 }
 
 void init_task1(void)
@@ -73,11 +86,14 @@ void init_task1(void)
 	allocate_DIR(pcb);
 
 	set_user_pages(pcb);
-	tss.esp0 = (int)(&freequeue + KERNEL_STACK_SIZE); //new_task->stack = &freequeue + KERNEL_STACK_SIZE
+
+	union task_union *a = (union task_union)pcb;
+	tss.esp0 = KERNEL_ESP(a);
 
 	set_cr3(pcb->dir_pages_baseAddr);
-}
 
+	// return_gate(Word ds, Word ss, DWord esp, Word cs, DWord eip);
+}
 
 void init_sched()
 {
@@ -86,11 +102,6 @@ void init_sched()
 
 	for (int i = 0; i < NR_TASKS; ++i)
 		list_add_tail(&(task[i].task.list), &freequeue);
-}
-
-struct task_struct *list_head_to_task_struct(struct list_head *l)
-{
-	return list_entry(l, struct task_struct, list);
 }
 
 struct task_struct* current()
@@ -104,3 +115,39 @@ struct task_struct* current()
   return (struct task_struct*)(ret_value&0xfffff000);
 }
 
+void task_switch(union task_union* t)
+{
+	__asm__ __volatile__(
+		"pushl %%esi\n\t"
+		"pushl %%edi\n\t"
+		"pushl %%ebx\n\t"
+		);
+
+	inner_task_switch(t);
+
+	__asm__ __volatile__(
+		"popl %%ebx\n\t"
+		"popl %%edi\n\t"
+		"popl %%esi\n\t"
+		);
+}
+
+void inner_task_switch(union task_union* t)
+{
+	writeMSR(0x176, (int) KERNEL_ESP(t));
+	set_cr3(t->task->dir_pages_baseAddr);
+
+	__asm__ __volatile__(
+		"movl %%ebp, %0\n\t"
+		"movl %1, %%esp\n\t"
+		"popl %%ebp\n\t"
+		"ret\n\t"
+		: "=g" (current()->kernel_esp)
+		: "g" (t->task.kernel_esp)
+	);
+}
+
+struct task_struct *list_head_to_task_struct(struct list_head *l)
+{
+	return list_entry(l, struct task_struct, list);
+}
