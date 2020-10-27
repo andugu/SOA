@@ -5,6 +5,7 @@
 #include <sched.h>
 #include <mm.h>
 #include <io.h>
+#include <interrupt.h>
 
 union task_union task[NR_TASKS]
   __attribute__((__section__(".data.task")));
@@ -15,7 +16,6 @@ struct list_head readyqueue;
 struct task_struct *idle_task;
 
 extern struct list_head blocked;
-
 
 /* get_DIR - Returns the Page Directory address for task 't' */
 page_table_entry * get_DIR (struct task_struct *t) 
@@ -28,7 +28,6 @@ page_table_entry * get_PT (struct task_struct *t)
 {
 	return (page_table_entry *)(((unsigned int)(t->dir_pages_baseAddr->bits.pbase_addr))<<12);
 }
-
 
 int allocate_DIR(struct task_struct *t) 
 {
@@ -66,14 +65,6 @@ void init_idle (void)
 	a->stack[KERNEL_STACK_SIZE - 1] = (unsigned long int) &cpu_idle;
 	a->stack[KERNEL_STACK_SIZE - 2] = 0;
 	pcb->kernel_esp = &a->stack[KERNEL_STACK_SIZE - 2];
-
-	/*__asm__ __volatile__(
-		"movl %0, %%esp\n\t"
-		"pop %%ebp\n\t"
-		"ret\n\t"
-		: // no output
-		: "g" (pcb->kernel_esp));
-	*/
 }
 
 void init_task1(void)
@@ -91,8 +82,6 @@ void init_task1(void)
 	tss.esp0 = KERNEL_ESP(a);
 
 	set_cr3(pcb->dir_pages_baseAddr);
-
-	// return_gate(Word ds, Word ss, DWord esp, Word cs, DWord eip);
 }
 
 void init_sched()
@@ -132,8 +121,6 @@ void task_switch(union task_union* t)
 		);
 }
 
-void writeMSR(int msr, int value);
-
 void inner_task_switch(union task_union* t)
 {
 	tss.esp0 = KERNEL_ESP(t);
@@ -153,4 +140,62 @@ void inner_task_switch(union task_union* t)
 struct task_struct *list_head_to_task_struct(struct list_head *l)
 {
 	return list_entry(l, struct task_struct, list);
+}
+
+void schedule()
+{
+
+}
+
+void sched_next_rr()
+{
+	struct task_struct *task;
+
+	if (list_empty(readyqueue))
+		task = idle_task;
+	else
+	{
+		struct list_head *elem = list_first(readyqueue);
+		list_del(elem);
+		t = list_head_to_task_struct(elem);
+	}
+
+	task->status = ST_RUN;
+
+	task_switch((union task_union*) t);
+}
+
+void update_process_state_rr(struct task_struct *t, struct list_head *dest)
+{
+	if (t->status != ST_RUN) list_del(t->list);
+	if (dest != NULL)
+	{
+		list_add_tail(t->list, dest);
+		if (dest == blocked) t->status = ST_BLOCKED;
+		else t->status = ST_READY;
+	}
+	else
+		t->status = ST_RUN;
+}
+
+int needs_sched_rr()
+{
+	if (current()->quantum <= 0 && (!list_empty(readyqueue))) return 1
+	else if (current()->quantum <= 0) current()->quantum = MAX_QUANTUM;
+	return 0
+}
+
+void update_sched_data_rr()
+{
+	current()->quantum -= 1;
+}
+
+int get_quantum (struct task_struct *t)
+{
+	return t->quantum;
+}
+
+void set_quantum (struct task_struct *t, int new_quantum)
+{
+	t->quantum = new_quantum;
 }

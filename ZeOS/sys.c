@@ -52,14 +52,16 @@ int sys_fork()
 	struct list_head *first_free = list_first(&freequeue);
 	list_del(first_free);
 	union task_union *child = (union task_union*) list_head_to_task_struct(first_free); // Si no inicialitzava child, petava
+	struct list_head list = child->task->list;
 
 	int pag;
 	/*Copy the father's union task_union*/
 	copy_data(current(), child, sizeof(union task_union));
+	child->task->list = list;
 	
-	/*Copy the father's TP*/
-	allocate_DIR(&(child->task)); //Creating a directory for the child
-	//plantilla de còpia de frames: void set_user_pages( struct task_struct *task ) de mm.c
+	/* Copy the father's TP */
+	allocate_DIR(&(child->task)); // Creating a directory for the child
+	// Plantilla de còpia de frames: void set_user_pages( struct task_struct *task ) de mm.c
 	page_table_entry *TP_dad = get_PT(current());
 	page_table_entry *TP_child = get_PT(&(child->task));
 	for (pag=0;pag<NUM_PAG_CODE;pag++) // Code pages are shared (they are read-only)
@@ -67,50 +69,46 @@ int sys_fork()
 	for (pag=0;pag<NUM_PAG_KERNEL;pag++) // Kernel pages are shared
 	  	TP_child[pag] = TP_dad[pag]; // Kernel starts at 0
 
+	// Finding a dad's free logical page
+	int free_page = -1;
+	for (pag=0; (pag<TOTAL_PAGES) && (free_page<0); pag++)
+		if (TP_dad[pag].entry == 0)
+			free_page = pag;
+	if (free_page < 0) {
+		list_add_tail(first_free, &freequeue);
+		return -105; /* Dad has no free pages-> ENOBUFS */
+	}
 
 	int new_ph_pag;
-	for (pag=0;pag<NUM_PAG_DATA;pag++){ //new frames for child's data
+	for (pag=0;pag<NUM_PAG_DATA;pag++){ // New frames for child's data
 		new_ph_pag=alloc_frame();
 		if (new_ph_pag < 0) {
-			free_user_pages(&(child->task)); //If fork is aborted -> child's frame pages are freed
+			free_user_pages(&(child->task)); // If fork is aborted -> child's frame pages are freed
 			list_add_tail(first_free, &freequeue);
-			return -23; /*ENFILE*/
+			return -23; /* ENFILE */
 		}
-	  	TP_child[PAG_LOG_INIT_DATA+pag].entry = 0;
-	  	TP_child[PAG_LOG_INIT_DATA+pag].bits.pbase_addr = new_ph_pag;
-	  	TP_child[PAG_LOG_INIT_DATA+pag].bits.user = 1;
-	  	TP_child[PAG_LOG_INIT_DATA+pag].bits.rw = 1;
-	  	TP_child[PAG_LOG_INIT_DATA+pag].bits.present = 1;
+		set_ss_pag(TP_child, PAG_LOG_INIT_DATA+pag, new_ph_pag);
 	}
 	
-	/*Copy father's data frames' data to child's data frames' data*/
-	//Finding a dad's free logical page
-	int free_page = -1;
-	for (pag=0; (pag<TOTAL_PAGES) && (free_page<0); pag++) 
-		if (TP_dad[pag].entry == 0) free_page = pag;
-	if (free_page < 0) {
-		free_user_pages(&(child->task));
-		list_add_tail(first_free, &freequeue);
-		return -105;/*Dad has no free pages-> ENOBUFS*/
-	}
+	/* Copy father's data frames' data to child's data frames' data */
 	for (pag=0; pag<NUM_PAG_DATA;pag++){
 		set_ss_pag(TP_dad, free_page, TP_child[PAG_LOG_INIT_DATA+pag].bits.pbase_addr);
 		copy_data((unsigned int*) ((PAG_LOG_INIT_DATA+pag) << 12), (unsigned int*) (free_page << 12), PAGE_SIZE);
 	}
 	
 	del_ss_pag(TP_dad, free_page);
-	set_cr3(current()->dir_pages_baseAddr); //clean dad's TLB
+	set_cr3(current()->dir_pages_baseAddr); // Clean dad's TLB
 	
-	//falta apartat f fins el final
+	// Assign next PID
 	child->task.PID = PID = next_PID;
-	next_PID++;
+	next_PID += 1;
 	
-	/*Update child's task_union*/
-	child->stack[KERNEL_STACK_SIZE-17] = 0; //new FAKE EBP
+	/* Update child's task_union */
+	child->stack[KERNEL_STACK_SIZE-17] = 0; // New FAKE EBP
 	child->task.kernel_esp = (unsigned long*) &(child->stack[KERNEL_STACK_SIZE-17]); // -(11(SAVE_ALL)+4(HW CONTEXT)+1(@ret)+1(EBP)+1(NEW_EBP))
-	child->stack[KERNEL_STACK_SIZE-18] = (unsigned long int) &ret_form_fork;
+	child->stack[KERNEL_STACK_SIZE-16] = (unsigned long int) &ret_form_fork;
 	
-	/*Insert child in readyqueue*/
+	/* Insert child in readyqueue */
 	list_add_tail(first_free, &readyqueue);
 	return PID;
 }

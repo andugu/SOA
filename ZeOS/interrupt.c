@@ -79,8 +79,6 @@ void clock_handler();
 
 void syscall_handler_sysenter();
 
-void writeMSR(int msr, int value);
-
 int zeos_ticks = 0;
 
 void setIdt()

@@ -11,14 +11,17 @@
 
 #define NR_TASKS      10
 #define KERNEL_STACK_SIZE	1024
+#define MAX_QUANTUM   10
 
 enum state_t { ST_RUN, ST_READY, ST_BLOCKED };
 
 struct task_struct {
   int PID;			/* Process ID. This MUST be the first field of the struct. */
   page_table_entry *dir_pages_baseAddr;
-  struct list_head list;
   unsigned long *kernel_esp;
+  int quantum;
+  enum state_t status;
+  struct list_head list;
 };
 
 union task_union {
@@ -27,7 +30,6 @@ union task_union {
 };
 
 extern union task_union task[NR_TASKS]; /* Vector de tasques */
-
 
 #define KERNEL_ESP(t)       	(DWord) &(t)->stack[KERNEL_STACK_SIZE]
 
@@ -55,9 +57,18 @@ page_table_entry *get_PT (struct task_struct *t) ;
 page_table_entry *get_DIR (struct task_struct *t) ;
 
 /* Headers for the scheduling policy */
+void schedule();
+
 void sched_next_rr();
+
 void update_process_state_rr(struct task_struct *t, struct list_head *dest);
+
 int needs_sched_rr();
+
 void update_sched_data_rr();
+
+int get_quantum (struct task_struct *t);
+
+void set_quantum (struct task_struct *t, int new_quantum):
 
 #endif  /* __SCHED_H__ */
