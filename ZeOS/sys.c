@@ -55,10 +55,10 @@ int sys_fork()
 	
 	/* Copy father's union task_union */
 	// Save list from overwrite 
-	struct list_head list = child->task->list;
+	struct list_head list = child->task.list;
 	copy_data(current(), child, sizeof(union task_union));
 	// Restore list
-	child->task->list = list;
+	child->task.list = list;
 	
 	/* Copy father's TP */
 	// Creating a directory for the child
@@ -129,6 +129,8 @@ int sys_fork()
 	return PID;
 }
 
+int needs_sched_rr();
+
 void sys_exit()
 {
 	// Get pcb (task_struct)
@@ -141,7 +143,7 @@ void sys_exit()
 	list_add_tail(&(current()->list), &freequeue);
 
 	// Run next process
-	sched_next();
+	sched_next_rr();
 
 	return;
 }

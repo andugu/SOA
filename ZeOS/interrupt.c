@@ -8,8 +8,6 @@
 #include <hardware.h>
 #include <io.h>
 #include <zeos_interrupt.h>
-#include <sched.h>
-#include <schedperf.h>
 
 Gate idt[IDT_ENTRIES];
 Register    idtR;
@@ -112,6 +110,8 @@ void keyboard_routine()
     printc_xy(0, 0, char_val);
   }
 }
+
+void schedule();
 
 void clock_routine()
 {

@@ -7,6 +7,8 @@
 #include <io.h>
 #include <interrupt.h>
 
+#include <schedperf.h>
+
 union task_union task[NR_TASKS]
   __attribute__((__section__(".data.task")));
 
@@ -138,9 +140,11 @@ struct task_struct *list_head_to_task_struct(struct list_head *l)
 	return list_entry(l, struct task_struct, list);
 }
 
+//void init_sched_policy();
+
 void init_sched()
 {
-	init_sched_policy();
+	//init_sched_policy();
 	INIT_LIST_HEAD(&freequeue);
 	INIT_LIST_HEAD(&readyqueue);
 
@@ -149,12 +153,12 @@ void init_sched()
 }
 
 void schedule()
-{
-	update_sched_data();
-	if(needs_sched())
+{	
+	update_sched_data_rr();
+	if(needs_sched_rr())
 	{
-		update_process_state(current(), readyqueue);
-		sched_next();
+		update_process_state_rr(current(), &readyqueue);
+		sched_next_rr();
 	}
 }
 
@@ -162,28 +166,28 @@ void sched_next_rr()
 {
 	struct task_struct *task;
 
-	if (list_empty(readyqueue))
+	if (list_empty(&readyqueue))
 		task = idle_task;
 	else
 	{
-		struct list_head *elem = list_first(readyqueue);
+		struct list_head *elem = list_first(&readyqueue);
 		list_del(elem);
 		task = list_head_to_task_struct(elem);
 	}
 
 	task->status = ST_RUN;
-	execution_quantum = get_quantum(task);
+	execution_quantum = get_quantum(task);	
 
 	task_switch((union task_union*) task);
 }
 
 void update_process_state_rr(struct task_struct *t, struct list_head *dest)
 {
-	if (t->status != ST_RUN) list_del(t->list);
+	if (t->status != ST_RUN) list_del(&(t->list));
 	if (dest != NULL)
 	{
-		list_add_tail(t->list, dest);
-		if (dest != readyqueue) t->status = ST_BLOCKED;
+		list_add_tail(&(t->list), dest);
+		if (dest != &readyqueue) t->status = ST_BLOCKED;
 		else t->status = ST_READY;
 	}
 	else
@@ -192,9 +196,9 @@ void update_process_state_rr(struct task_struct *t, struct list_head *dest)
 
 int needs_sched_rr()
 {
-	if (execution_quantum <= 0 && (!list_empty(readyqueue))) return 1
+	if (execution_quantum <= 0 && (!list_empty(&readyqueue))) return 1;
 	else if (execution_quantum <= 0) execution_quantum = get_quantum(current());
-	return 0
+	return 0;
 }
 
 void update_sched_data_rr()
