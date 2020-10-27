@@ -38,8 +38,6 @@ int sys_getpid()
 	return current()->PID;
 }
 
-void free_user_pages( struct task_struct *task );
-
 int ret_form_fork(void) {
 	// Uses handler return @
 	return 0;
@@ -133,13 +131,17 @@ int sys_fork()
 
 void sys_exit()
 {
-	// Get task_struct and task_union
+	// Get pcb (task_struct)
 	struct task_struct *pcb = current();
-	union task_union *task_union = (union task_union*) pcb;
-	
-	// Get PT's
-	page_table_entry *TP = get_PT(pcb);
 
+	// Free data physical pages
+	free_user_pages(pcb);
+
+	// Free pcb (task_struct)
+	list_add_tail(&(current()->list), &freequeue);
+
+	// Run next process
+	sched_next();
 
 	return;
 }
