@@ -64,7 +64,7 @@ void init_idle (void)
 
 	idle_task = pcb;
 
-	union task_union *a = (union task_union*)pcb;
+	union task_union *a = (union task_union*) pcb;
 	a->stack[KERNEL_STACK_SIZE - 1] = (unsigned long int) &cpu_idle;
 	a->stack[KERNEL_STACK_SIZE - 2] = 0;
 	pcb->kernel_esp = &a->stack[KERNEL_STACK_SIZE - 2];
@@ -83,7 +83,7 @@ void init_task1(void)
 
 	set_user_pages(pcb);
 
-	union task_union *a = (union task_union*)pcb;
+	union task_union *a = (union task_union*) pcb;
 	tss.esp0 = KERNEL_ESP(a);
 
 	set_cr3(get_DIR(pcb));

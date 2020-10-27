@@ -132,7 +132,16 @@ int sys_fork()
 }
 
 void sys_exit()
-{  
+{
+	// Get task_struct and task_union
+	struct task_struct *pcb = current();
+	union task_union *task_union = (union task_union*) pcb;
+	
+	// Get PT's
+	page_table_entry *TP = get_PT(pcb);
+
+
+	return;
 }
 
 int sys_write(int fd, char * buffer, int size)
