@@ -50,9 +50,8 @@ int sys_fork()
 	if (list_empty(&freequeue)) return -105; /*ENOBUFS*/
 	
 	struct list_head *first_free = list_first(&freequeue);
-	//struct task_struct *pcb = list_head_to_task_struct(first_free);
 	list_del(first_free);
-	union task_union *child;
+	union task_union *child = (union task_union*) list_head_to_task_struct(first_free); // Si no inicialitzava child, petava
 
 	int pag;
 	/*Copy the father's union task_union*/

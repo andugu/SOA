@@ -37,7 +37,7 @@ int __attribute__ ((__section__(".text.main")))
 	// Losing time
 	for(int i = 0; i < 50000000; ++i);
 
-	pid = getpid();
+	pid = fork();
 	write(1, "My pid is:", strlen("My pid is:"));
 	char a[sizeof(int)];
 	itoa(pid, a);
