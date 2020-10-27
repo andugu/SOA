@@ -17,6 +17,8 @@ extern int zeos_ticks;
 extern struct list_head freequeue;
 extern struct list_head readyqueue;
 
+unsigned int next_PID = 49;
+
 char kernel_buffer[1024];
 
 int check_fd(int fd, int permissions)
@@ -37,6 +39,10 @@ int sys_getpid()
 }
 
 void free_user_pages( struct task_struct *task );
+
+int ret_form_fork(void) {
+	return 0;
+}
 
 int sys_fork()
 {
@@ -80,7 +86,7 @@ int sys_fork()
 	
 	/*Copy father's data frames' data to child's data frames' data*/
 	//Finding a dad's free logical page
-	unsigned int free_page = -1;
+	int free_page = -1;
 	for (pag=0; (pag<TOTAL_PAGES) && (free_page<0); pag++) 
 		if (TP_dad[pag].entry == 0) free_page = pag;
 	if (free_page < 0) {
@@ -97,7 +103,16 @@ int sys_fork()
 	set_cr3(current()->dir_pages_baseAddr); //clean dad's TLB
 	
 	//falta apartat f fins el final
+	child->task.PID = PID = next_PID;
+	next_PID++;
 	
+	/*Update child's task_union*/
+	child->stack[KERNEL_STACK_SIZE-17] = 0; //new FAKE EBP
+	child->task.kernel_esp = (unsigned long*) &(child->stack[KERNEL_STACK_SIZE-17]); // -(11(SAVE_ALL)+4(HW CONTEXT)+1(@ret)+1(EBP)+1(NEW_EBP))
+	child->stack[KERNEL_STACK_SIZE-18] = (unsigned long int) &ret_form_fork;
+	
+	/*Insert child in readyqueue*/
+	list_add_tail(first_free, &readyqueue);
 	return PID;
 }
 
