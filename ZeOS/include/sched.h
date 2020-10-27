@@ -11,7 +11,7 @@
 
 #define NR_TASKS      10
 #define KERNEL_STACK_SIZE	1024
-#define MAX_QUANTUM   10
+#define DEFAULT_QUANTUM   10
 
 enum state_t { ST_RUN, ST_READY, ST_BLOCKED };
 
@@ -40,8 +40,6 @@ void init_task1(void);
 
 void init_idle(void);
 
-void init_sched(void);
-
 struct task_struct *current();
 
 void task_switch(union task_union* t);
@@ -57,6 +55,8 @@ page_table_entry *get_PT (struct task_struct *t) ;
 page_table_entry *get_DIR (struct task_struct *t) ;
 
 /* Headers for the scheduling policy */
+void init_sched(void);
+
 void schedule();
 
 void sched_next_rr();

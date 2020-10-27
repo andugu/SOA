@@ -15,6 +15,8 @@ struct list_head readyqueue;
 
 struct task_struct *idle_task;
 
+int execution_quantum;
+
 extern struct list_head blocked;
 
 /* get_DIR - Returns the Page Directory address for task 't' */
@@ -57,6 +59,7 @@ void init_idle (void)
 	list_del(first_free);
 
 	pcb->PID = 0;
+	pcb->quantum = 0;
 	allocate_DIR(pcb);
 
 	idle_task = pcb;
@@ -73,7 +76,9 @@ void init_task1(void)
 	struct task_struct *pcb        = list_head_to_task_struct(first_free);
 	list_del(first_free);
 
-	pcb->PID = 1;	
+	pcb->PID = 1;
+	pcb->quantum = execution_quantum = DEFAULT_QUANTUM;
+	pcb->status = ST_RUN;
 	allocate_DIR(pcb);
 
 	set_user_pages(pcb);
@@ -81,16 +86,7 @@ void init_task1(void)
 	union task_union *a = (union task_union*)pcb;
 	tss.esp0 = KERNEL_ESP(a);
 
-	set_cr3(pcb->dir_pages_baseAddr);
-}
-
-void init_sched()
-{
-	INIT_LIST_HEAD(&freequeue);
-	INIT_LIST_HEAD(&readyqueue);
-
-	for (int i = 0; i < NR_TASKS; ++i)
-		list_add_tail(&(task[i].task.list), &freequeue);
+	set_cr3(get_DIR(pcb));
 }
 
 struct task_struct* current()
@@ -125,7 +121,7 @@ void inner_task_switch(union task_union* t)
 {
 	tss.esp0 = KERNEL_ESP(t);
 	writeMSR(0x175, (int) KERNEL_ESP(t));
-	set_cr3(t->task.dir_pages_baseAddr);
+	set_cr3(get_DIR(&t->task));
 
 	__asm__ __volatile__(
 		"movl %%ebp, %0\n\t"
@@ -142,9 +138,24 @@ struct task_struct *list_head_to_task_struct(struct list_head *l)
 	return list_entry(l, struct task_struct, list);
 }
 
+void init_sched()
+{
+	init_sched_policy();
+	INIT_LIST_HEAD(&freequeue);
+	INIT_LIST_HEAD(&readyqueue);
+
+	for (int i = 0; i < NR_TASKS; ++i)
+		list_add_tail(&(task[i].task.list), &freequeue);
+}
+
 void schedule()
 {
-
+	update_sched_data();
+	if(needs_sched())
+	{
+		update_process_state(current(), readyqueue);
+		sched_next();
+	}
 }
 
 void sched_next_rr()
@@ -157,12 +168,13 @@ void sched_next_rr()
 	{
 		struct list_head *elem = list_first(readyqueue);
 		list_del(elem);
-		t = list_head_to_task_struct(elem);
+		task = list_head_to_task_struct(elem);
 	}
 
 	task->status = ST_RUN;
+	execution_quantum = get_quantum(task);
 
-	task_switch((union task_union*) t);
+	task_switch((union task_union*) task);
 }
 
 void update_process_state_rr(struct task_struct *t, struct list_head *dest)
@@ -171,7 +183,7 @@ void update_process_state_rr(struct task_struct *t, struct list_head *dest)
 	if (dest != NULL)
 	{
 		list_add_tail(t->list, dest);
-		if (dest == blocked) t->status = ST_BLOCKED;
+		if (dest != readyqueue) t->status = ST_BLOCKED;
 		else t->status = ST_READY;
 	}
 	else
@@ -180,14 +192,14 @@ void update_process_state_rr(struct task_struct *t, struct list_head *dest)
 
 int needs_sched_rr()
 {
-	if (current()->quantum <= 0 && (!list_empty(readyqueue))) return 1
-	else if (current()->quantum <= 0) current()->quantum = MAX_QUANTUM;
+	if (execution_quantum <= 0 && (!list_empty(readyqueue))) return 1
+	else if (execution_quantum <= 0) execution_quantum = get_quantum(current());
 	return 0
 }
 
 void update_sched_data_rr()
 {
-	current()->quantum -= 1;
+	execution_quantum -= 1;
 }
 
 int get_quantum (struct task_struct *t)
