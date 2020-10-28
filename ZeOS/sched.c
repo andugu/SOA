@@ -7,8 +7,6 @@
 #include <io.h>
 #include <interrupt.h>
 
-#include <schedperf.h>
-
 union task_union task[NR_TASKS]
   __attribute__((__section__(".data.task")));
 
@@ -63,6 +61,7 @@ void init_idle (void)
 	pcb->PID = 0;
 	pcb->quantum = 0;
 	allocate_DIR(pcb);
+	pcb->status = ST_READY;
 
 	idle_task = pcb;
 
@@ -140,7 +139,7 @@ struct task_struct *list_head_to_task_struct(struct list_head *l)
 	return list_entry(l, struct task_struct, list);
 }
 
-//void init_sched_policy();
+//extern void init_sched_policy();
 
 void init_sched()
 {

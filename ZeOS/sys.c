@@ -69,11 +69,13 @@ int sys_fork()
 
 	// Code pages are shared (they are read-only)
 	for (int pag = 0; pag < NUM_PAG_CODE; pag++)
-	  	TP_child[PAG_LOG_INIT_CODE + pag] = TP_dad[PAG_LOG_INIT_CODE + pag];
+//	  	TP_child[PAG_LOG_INIT_CODE + pag] = TP_dad[PAG_LOG_INIT_CODE + pag];
+		set_ss_pag(TP_child, PAG_LOG_INIT_CODE + pag, get_frame(TP_dad, PAG_LOG_INIT_CODE + pag));
 
 	// Kernel pages are shared (Kernel starts at 0)
 	for (int pag = 0; pag < NUM_PAG_KERNEL; pag++)
-	  	TP_child[pag] = TP_dad[pag];
+//	  	TP_child[pag] = TP_dad[pag];
+		set_ss_pag(TP_child, pag, get_frame(TP_dad, pag));
 
 	/* Finding a dad's free logical page */
 	int free_page = -1;
@@ -100,11 +102,12 @@ int sys_fork()
 	
 	/* Copy father's data frames data to child's data frames data */
 	for (int pag = 0; pag < NUM_PAG_DATA; pag++){
-		set_ss_pag(TP_dad, free_page, TP_child[PAG_LOG_INIT_DATA + pag].bits.pbase_addr);
+		set_ss_pag(TP_dad, free_page, get_frame(TP_child, PAG_LOG_INIT_DATA + pag));
 		copy_data((unsigned int*) ((PAG_LOG_INIT_DATA + pag) << 12), (unsigned int*) (free_page << 12), PAGE_SIZE);
 	}
-	
+
 	del_ss_pag(TP_dad, free_page);
+
 	// Flush dad's TLB (remove free_page)
 	set_cr3(current()->dir_pages_baseAddr);
 	
@@ -116,11 +119,11 @@ int sys_fork()
 	// Modify @ret for child, so it will return a 0 (PID) through ret_form_fork
 	// -(11(SAVE_ALL)+4(HW CONTEXT)+1(@ret)+1(EBP)+1(NEW_EBP))
 	// New fake ebp
-	child->stack[KERNEL_STACK_SIZE - 17] = 0;
+	child->stack[KERNEL_STACK_SIZE - 18] = 0;
 	// Child's kernel_esp points to fake ebp
-	child->task.kernel_esp = (unsigned long*) &(child->stack[KERNEL_STACK_SIZE - 17]);
+	child->task.kernel_esp = (unsigned long*) &(child->stack[KERNEL_STACK_SIZE - 18]);
 	// @ret <- &ret_form_fork
-	child->stack[KERNEL_STACK_SIZE - 16] = (unsigned long int) &ret_form_fork;
+	child->stack[KERNEL_STACK_SIZE - 17] = (unsigned long int) &ret_form_fork;
 	
 	/* Insert child in readyqueue */
 	child->task.status = ST_READY;
@@ -129,7 +132,7 @@ int sys_fork()
 	return PID;
 }
 
-int needs_sched_rr();
+void sched_next_rr();
 
 void sys_exit()
 {
