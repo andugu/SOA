@@ -104,12 +104,10 @@ int sys_fork()
 	for (int pag = 0; pag < NUM_PAG_DATA; pag++){
 		set_ss_pag(TP_dad, free_page, get_frame(TP_child, PAG_LOG_INIT_DATA + pag));
 		copy_data((unsigned int*) ((PAG_LOG_INIT_DATA + pag) << 12), (unsigned int*) (free_page << 12), PAGE_SIZE);
+		del_ss_pag(TP_dad, free_page);
+		// Flush dad's TLB (remove free_page)
+		set_cr3(current()->dir_pages_baseAddr);
 	}
-
-	del_ss_pag(TP_dad, free_page);
-
-	// Flush dad's TLB (remove free_page)
-	set_cr3(current()->dir_pages_baseAddr);
 	
 	// Assign next PID
 	child->task.PID = PID = next_PID;
