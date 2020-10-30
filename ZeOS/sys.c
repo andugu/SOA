@@ -117,11 +117,11 @@ int sys_fork()
 	// Modify @ret for child, so it will return a 0 (PID) through ret_form_fork
 	// -(11(SAVE_ALL)+4(HW CONTEXT)+1(@ret)+1(EBP)+1(NEW_EBP))
 	// New fake ebp
-	child->stack[KERNEL_STACK_SIZE - 18] = 0;
+	child->stack[KERNEL_STACK_SIZE - 19] = 0;
 	// Child's kernel_esp points to fake ebp
-	child->task.kernel_esp = (unsigned long*) &(child->stack[KERNEL_STACK_SIZE - 18]);
+	child->task.kernel_esp = (unsigned long*) &(child->stack[KERNEL_STACK_SIZE - 19]);
 	// @ret <- &ret_form_fork
-	child->stack[KERNEL_STACK_SIZE - 17] = (unsigned long int) &ret_form_fork;
+	child->stack[KERNEL_STACK_SIZE - 18] = (unsigned long int) &ret_form_fork;
 	
 	/* Insert child in readyqueue */
 	child->task.status = ST_READY;
