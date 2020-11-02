@@ -161,6 +161,12 @@ void schedule()
 	}
 }
 
+int strlen(char *a) {
+	int i = 0;
+	while (a[i]!=0)i++;
+	return i;
+}
+
 void sched_next_rr()
 {
 	struct task_struct *task;
@@ -175,7 +181,11 @@ void sched_next_rr()
 	}
 
 	task->status = ST_RUN;
-	execution_quantum = get_quantum(task);	
+	execution_quantum = get_quantum(task);
+	
+	char a[64];
+	itoa(current()->PID, a);
+	sys_write(1, a, strlen(a));
 
 	task_switch((union task_union*) task);
 }
