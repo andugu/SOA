@@ -19,6 +19,8 @@ int execution_quantum;
 
 extern struct list_head blocked;
 
+unsigned long get_ticks(void);
+
 /* get_DIR - Returns the Page Directory address for task 't' */
 page_table_entry * get_DIR (struct task_struct *t) 
 {
@@ -104,6 +106,7 @@ void init_task1(void)
 
 	union task_union *a = (union task_union*) pcb;
 	tss.esp0 = KERNEL_ESP(a);
+	writeMSR(0x175, (int) KERNEL_ESP(a));
 
 	set_cr3(get_DIR(pcb));
 }
@@ -176,11 +179,12 @@ void schedule()
 	}
 }
 
-int strlen(char *a) {
+
+/*int strlen(char *a) {
 	int i = 0;
 	while (a[i]!=0)i++;
 	return i;
-}
+}*/
 
 void sched_next_rr()
 {
@@ -201,11 +205,13 @@ void sched_next_rr()
 	update_ticks_struct(&(task->stadistics.ready_ticks), &(task->stadistics.elapsed_total_ticks));
 	update_ticks_struct(&(current()->stadistics.system_ticks), &(current()->stadistics.elapsed_total_ticks));
 
-	char a[64];
+	/*char a[64];
 	itoa(current()->PID, a);
-	sys_write(1, a, strlen(a));
+	sys_write(1, a, strlen(a));*/
 
 	task_switch((union task_union*) task);
+	
+	current()->stadistics.total_trans++;
 }
 
 void update_process_state_rr(struct task_struct *t, struct list_head *dest)

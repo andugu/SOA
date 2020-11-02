@@ -67,8 +67,16 @@ void perror(void)
       write(1, "Invalid argument\n", strlen("Invalid argument\n"));
       break;
 
+    case 23: /*ENFILE*/
+      write(1, "File table overflow\n", strlen("File table overflow\n"));
+      break;
+
     case 38: /*ENOSYS*/
       write(1, "Invalid system call number\n", strlen("Invalid system call number\n"));
+      break;
+
+    case 105: /*ENOBUFS*/
+      write(1, "No buffer space available\n", strlen("No buffer space available\n"));
       break;
   }
 }

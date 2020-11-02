@@ -167,15 +167,15 @@ void sys_exit()
 
 	// Run next process
 	sched_next_rr();
-
-	return;
 }
 
 int sys_write(int fd, char * buffer, int size)
 {
-	if (check_fd(fd, ESCRIPTURA) != 0) return check_fd(fd, ESCRIPTURA);
+	int ret;
+	if ((ret = check_fd(fd, ESCRIPTURA)) != 0) return ret;
 	if (buffer == NULL) return -14; // EFAULT
 	if (size < 0) return -22; // EINVAL
+	if (!access_ok(VERIFY_READ, buffer, size)) return -14; /* EFAULT */
 
 	int err;
 	while (size > 1024) {
@@ -185,7 +185,7 @@ int sys_write(int fd, char * buffer, int size)
 		size -= 1024;
 	}
 	if (copy_from_user(buffer, kernel_buffer, size) < 0) return -1;
-	return sys_write_console(kernel_buffer, size);
+	return (sys_write_console(kernel_buffer, size) - size);
 }
 
 int sys_gettime()
@@ -195,12 +195,11 @@ int sys_gettime()
 
 int sys_getstats(int pid, struct stats *st)
 {
-	if (pid < 0) return -22 // EINVAL
+	if (pid < 0) return -22; // EINVAL
 	if (!access_ok(VERIFY_WRITE, st, sizeof(struct stats))) return -14; // EFAULT
 	
 	for (int i = 0; i < NR_TASKS; ++i){
-		if (task[i].task.PID == pid)
-		{
+		if (task[i].task.PID == pid) {
 			task[i].task.stadistics.remaining_ticks = execution_quantum;
 			return (copy_to_user(&(task[i].task.stadistics), st, sizeof(struct stats)) == sizeof(struct stats)) - 1;
 		}

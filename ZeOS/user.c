@@ -34,16 +34,6 @@ int __attribute__ ((__section__(".text.main")))
 
 	write(1, "    User program reached...\n", strlen("    User program reached...\n"));
 
-	// Losing time
-	for(int i = 0; i < 50000000; ++i);
-
-	pid = fork();
-	write(1, "My pid is:", strlen("My pid is:"));
-	char a[sizeof(int)];
-	itoa(pid, a);
-	write(1, a, strlen(a));
-	write(1, "\n", strlen("\n"));
-
 	write(1, "Going to infinite loop, bye! :)", strlen("Going to infinite loop, bye! :)"));
 
   	while(1)
