@@ -22,7 +22,7 @@ int fork();
 
 void exit();
 
-int get_stats(int pid, struct stats *st);
+int getstats(int pid, struct stats *st);
 
 void perror();
 

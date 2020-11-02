@@ -95,7 +95,7 @@ ENTRY(syscall_handler_sysenter)
       push $__USER_CS
       push 4(%EBP)            // User return address
       SAVE_ALL
-      pushl %eax;		// we have to say eax because user_to_system modifies its value
+      pushl %eax;		      // user_to_system uses %eax
       call user_to_system;
       popl %eax;
       cmpl $0, %EAX
@@ -140,12 +140,3 @@ ENTRY(writeMSR)
       movl %ebp, %esp
       popl %ebp
       ret
-
-ENTRY(setESP)
-	movl 4(%esp), %esp
-	popl %ebp;
-	ret;
-
-ENTRY(ReturnEBP)
-	movl %ebp, %eax
-	ret;

@@ -184,6 +184,7 @@ int sys_write(int fd, char * buffer, int size)
 		buffer += 1024;
 		size -= 1024;
 	}
+
 	if (copy_from_user(buffer, kernel_buffer, size) < 0) return -1;
 	return (sys_write_console(kernel_buffer, size) - size);
 }
@@ -199,7 +200,7 @@ int sys_getstats(int pid, struct stats *st)
 	if (!access_ok(VERIFY_WRITE, st, sizeof(struct stats))) return -14; // EFAULT
 	
 	for (int i = 0; i < NR_TASKS; ++i){
-		if (task[i].task.PID == pid) {
+		if (task[i].task.PID == pid){
 			task[i].task.stadistics.remaining_ticks = execution_quantum;
 			return (copy_to_user(&(task[i].task.stadistics), st, sizeof(struct stats)) == sizeof(struct stats)) - 1;
 		}

@@ -21,6 +21,9 @@ extern struct list_head blocked;
 
 unsigned long get_ticks(void);
 
+unsigned long returnEBP();
+void setESP(unsigned long *value);
+
 /* get_DIR - Returns the Page Directory address for task 't' */
 page_table_entry * get_DIR (struct task_struct *t) 
 {
@@ -139,17 +142,13 @@ void task_switch(union task_union* t)
 		);
 }
 
-unsigned long ReturnEBP();
-void setESP(unsigned long* new_value);
-
 void inner_task_switch(union task_union* t)
 {
 	tss.esp0 = KERNEL_ESP(t);
 	writeMSR(0x175, (int) KERNEL_ESP(t));
 	set_cr3(get_DIR(&t->task));
 
-	current()->kernel_esp = (unsigned long *) ReturnEBP(); //With tss.ebp doesn't work
-
+	current()->kernel_esp = (unsigned long *) returnEBP();
 	setESP(t->task.kernel_esp);
 }
 
@@ -177,13 +176,6 @@ void schedule()
 	}
 }
 
-
-/*int strlen(char *a) {
-	int i = 0;
-	while (a[i]!=0)i++;
-	return i;
-}*/
-
 void sched_next_rr()
 {
 	struct task_struct *task;
@@ -202,10 +194,6 @@ void sched_next_rr()
 
 	update_ticks_struct(&(task->stadistics.ready_ticks), &(task->stadistics.elapsed_total_ticks));
 	update_ticks_struct(&(current()->stadistics.system_ticks), &(current()->stadistics.elapsed_total_ticks));
-
-	/*char a[64];
-	itoa(current()->PID, a);
-	sys_write(1, a, strlen(a));*/
 
 	task_switch((union task_union*) task);
 	
