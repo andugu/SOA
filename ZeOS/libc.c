@@ -47,6 +47,10 @@ void perror(void)
 {
   switch (errno)
   {
+    case 3: /*ESRCH*/
+      write(1, "No such process\n", strlen("No such process\n"));
+      break;
+      
     case 9: /*EBADF*/
       write(1, "Bad file number\n", strlen("Bad file number\n"));
       break;

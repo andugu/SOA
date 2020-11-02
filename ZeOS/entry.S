@@ -73,14 +73,18 @@
 ENTRY(keyboard_handler)
       SAVE_ALL;
       EOI;
+      call user_to_system;
       call keyboard_routine;
+      call system_to_user;
       RESTORE_ALL;
       iret;
 
 ENTRY(clock_handler)
       SAVE_ALL;
       EOI;
+      user_to_system;
       call clock_routine;
+      system_to_user;
       RESTORE_ALL;
       iret;
 
@@ -91,6 +95,7 @@ ENTRY(syscall_handler_sysenter)
       push $__USER_CS
       push 4(%EBP)            // User return address
       SAVE_ALL
+      call user_to_system;
       cmpl $0, %EAX
       jl sysenter_err
       cmpl $MAX_SYSCALL, %EAX
@@ -101,6 +106,7 @@ sysenter_err:
       movl $-ENOSYS, %EAX
 sysenter_fin:
       movl %EAX, 0x18(%ESP)
+      call system_to_user;
       RESTORE_ALL
       movl (%ESP), %EDX       // Return address
       movl 12(%ESP), %ECX     // User stack address

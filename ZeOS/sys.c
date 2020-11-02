@@ -9,6 +9,7 @@
 #include <mm_address.h>
 #include <sched.h>
 #include <errno.h>
+#include <stats.h>
 
 #define LECTURA 0
 #define ESCRIPTURA 1
@@ -16,10 +17,24 @@
 extern int zeos_ticks;
 extern struct list_head freequeue;
 extern struct list_head readyqueue;
+extern union task_union task[NR_TASKS];
+extern int execution_quantum;
+
+void sched_next_rr();
 
 unsigned int next_PID = 70;
 
 char kernel_buffer[1024];
+
+void user_to_system()
+{
+	update_ticks_struct(&(current()->stadistics.user_ticks), &(current()->stadistics.elapsed_total_ticks));
+}
+
+void system_to_user()
+{
+	update_ticks_struct(&(current()->stadistics.system_ticks), &(current()->stadistics.elapsed_total_ticks));
+}
 
 int check_fd(int fd, int permissions)
 {
@@ -123,14 +138,21 @@ int sys_fork()
 	// @ret <- &ret_form_fork
 	child->stack[KERNEL_STACK_SIZE - 18] = (unsigned long int) &ret_form_fork;
 	
+	// Init stadistics
+	child->task.stadistics.user_ticks = 0;
+	child->task.stadistics.system_ticks = 0;
+	child->task.stadistics.blocked_ticks = 0;
+	child->task.stadistics.ready_ticks = 0;
+	child->task.stadistics.elapsed_total_ticks = get_ticks();
+	child->task.stadistics.total_trans = 0;
+	child->task.stadistics.remaining_ticks = get_ticks();
+
 	/* Insert child in readyqueue */
 	child->task.status = ST_READY;
 	list_add_tail(first_free, &readyqueue);
 
 	return PID;
 }
-
-void sched_next_rr();
 
 void sys_exit()
 {
@@ -169,4 +191,20 @@ int sys_write(int fd, char * buffer, int size)
 int sys_gettime()
 {
 	return zeos_ticks;
+}
+
+int sys_getstats(int pid, struct stats *st)
+{
+	if (pid < 0) return -22 // EINVAL
+	if (!access_ok(VERIFY_WRITE, st, sizeof(struct stats))) return -14; // EFAULT
+	
+	for (int i = 0; i < NR_TASKS; ++i){
+		if (task[i].task.PID == pid)
+		{
+			task[i].task.stadistics.remaining_ticks = execution_quantum;
+			return (copy_to_user(&(task[i].task.stadistics), st, sizeof(struct stats)) == sizeof(struct stats)) - 1;
+		}
+	}
+
+	return -3; // ESRCH
 }

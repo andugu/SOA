@@ -58,6 +58,15 @@ void init_idle (void)
 	struct task_struct *pcb        = list_head_to_task_struct(first_free);
 	list_del(first_free);
 
+	// Init stadistics
+	pcb->stadistics.user_ticks = 0;
+	pcb->stadistics.system_ticks = 0;
+	pcb->stadistics.blocked_ticks = 0;
+	pcb->stadistics.ready_ticks = 0;
+	pcb->stadistics.elapsed_total_ticks = get_ticks();
+	pcb->stadistics.total_trans = 0;
+	pcb->stadistics.remaining_ticks = get_ticks();
+
 	pcb->PID = 0;
 	pcb->quantum = 0;
 	allocate_DIR(pcb);
@@ -76,6 +85,15 @@ void init_task1(void)
 	struct list_head   *first_free = list_first(&freequeue);
 	struct task_struct *pcb        = list_head_to_task_struct(first_free);
 	list_del(first_free);
+
+	// Init stadistics
+	pcb->stadistics.user_ticks = 0;
+	pcb->stadistics.system_ticks = 0;
+	pcb->stadistics.blocked_ticks = 0;
+	pcb->stadistics.ready_ticks = 0;
+	pcb->stadistics.elapsed_total_ticks = get_ticks();
+	pcb->stadistics.total_trans = 0;
+	pcb->stadistics.remaining_ticks = get_ticks();
 
 	pcb->PID = 1;
 	pcb->quantum = execution_quantum = DEFAULT_QUANTUM;
@@ -139,11 +157,8 @@ struct task_struct *list_head_to_task_struct(struct list_head *l)
 	return list_entry(l, struct task_struct, list);
 }
 
-//extern void init_sched_policy();
-
 void init_sched()
 {
-	//init_sched_policy();
 	INIT_LIST_HEAD(&freequeue);
 	INIT_LIST_HEAD(&readyqueue);
 
@@ -182,7 +197,10 @@ void sched_next_rr()
 
 	task->status = ST_RUN;
 	execution_quantum = get_quantum(task);
-	
+
+	update_ticks_struct(&(task->stadistics.ready_ticks), &(task->stadistics.elapsed_total_ticks));
+	update_ticks_struct(&(current()->stadistics.system_ticks), &(current()->stadistics.elapsed_total_ticks));
+
 	char a[64];
 	itoa(current()->PID, a);
 	sys_write(1, a, strlen(a));
@@ -197,7 +215,11 @@ void update_process_state_rr(struct task_struct *t, struct list_head *dest)
 	{
 		list_add_tail(&(t->list), dest);
 		if (dest != &readyqueue) t->status = ST_BLOCKED;
-		else t->status = ST_READY;
+		else
+		{
+			t->status = ST_READY;
+			update_ticks_struct(&(t->stadistics.system_ticks), &(t->stadistics.elapsed_total_ticks));
+		}
 	}
 	else
 		t->status = ST_RUN;

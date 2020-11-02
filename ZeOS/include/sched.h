@@ -22,6 +22,7 @@ struct task_struct {
   int quantum;
   enum state_t status;
   struct list_head list;
+  struct stats stadistics;
 };
 
 union task_union {

@@ -213,3 +213,52 @@ exit_end:
 	movl %ebp, %esp
 	popl %ebp
 	ret
+
+ENTRY(getstats)
+	pushl %ebp 					// Save context
+	movl %esp, %ebp
+	pushl %ebx					
+	pushl %ecx
+	pushl %edx
+
+	movl 8(%ebp), %ebx 			// Parameter passing
+	movl 12(%ebp), %ecx
+
+	movl $35, %eax				// Syscall id
+
+	pushl %ecx					// Save ecx, edx, esi in user stack
+	pushl %edx
+	pushl %esi
+
+	lea getstats_return_address, %esi
+
+	pushl %esi 					// Store return address
+	pushl %ebp					// Create fake dynamic link
+	movl %esp, %ebp
+
+	sysenter 					// Enter the system
+
+getstats_return_address:
+	popl %ebp					// Restore context
+	addl $4, %esp				// Remove return address
+	popl %esi
+	popl %edx
+	popl %ecx
+	popl %edx
+	popl %ecx
+	popl %ebx
+	
+	cmpl $0, %eax				// If result is -, move to errno
+	jge getstats_end
+
+	pushl %edx
+	movl $-1, %edx
+	imull %edx 					// %eax * -1 (%edx is also modified)
+	popl %edx
+	movl %eax, errno 			// Move error code to errno
+	movl $-1, %eax				// Set return value to -1
+
+getstats_end:
+	movl %ebp, %esp
+	popl %ebp
+	ret
