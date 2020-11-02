@@ -140,3 +140,12 @@ ENTRY(writeMSR)
       movl %ebp, %esp
       popl %ebp
       ret
+
+ENTRY(setESP)
+	movl 4(%esp), %esp
+	popl %ebp;
+	ret;
+
+ENTRY(ReturnEBP)
+	movl %ebp, %eax
+	ret;

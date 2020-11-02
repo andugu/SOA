@@ -139,20 +139,18 @@ void task_switch(union task_union* t)
 		);
 }
 
+unsigned long ReturnEBP();
+void setESP(unsigned long* new_value);
+
 void inner_task_switch(union task_union* t)
 {
 	tss.esp0 = KERNEL_ESP(t);
 	writeMSR(0x175, (int) KERNEL_ESP(t));
 	set_cr3(get_DIR(&t->task));
 
-	__asm__ __volatile__(
-		"movl %%ebp, %0\n\t"
-		"movl %1, %%esp\n\t"
-		"popl %%ebp\n\t"
-		"ret\n\t"
-		: "=g" (current()->kernel_esp)
-		: "g" (t->task.kernel_esp)
-	);
+	current()->kernel_esp = (unsigned long *) ReturnEBP(); //With tss.ebp doesn't work
+
+	setESP(t->task.kernel_esp);
 }
 
 struct task_struct *list_head_to_task_struct(struct list_head *l)

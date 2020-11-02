@@ -32,6 +32,13 @@ int __attribute__ ((__section__(".text.main")))
     /* Next line, tries to move value 0 to CR3 register. This register is a privileged one, and so it will raise an exception */
      /* __asm__ __volatile__ ("mov %0, %%cr3"::"r" (0) ); */
 
+	int pid = fork();
+
+	char a[64];
+	itoa(pid, a);
+	write(1, a, strlen(a));
+	write(1, "\n", strlen("\n"));
+
 	write(1, "    User program reached...\n", strlen("    User program reached...\n"));
 
 	write(1, "Going to infinite loop, bye! :)", strlen("Going to infinite loop, bye! :)"));
