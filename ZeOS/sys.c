@@ -124,9 +124,16 @@ int sys_fork()
 		set_cr3(current()->dir_pages_baseAddr);
 	}
 	
-	// Assign next PID
+	// Fast check to avoid repeating PID (in case many many forks were made, and next_PID had an overflow)
+	int clean = 0;
+	do {
+		next_PID += 2;
+		clean = (next_PID > 1);
+		for (int p = 0; p < NR_TASKS; p++) {
+			if (task[p].task.PID == next_PID) clean = 0;
+		}
+	} while (!clean);
 	child->task.PID = PID = next_PID;
-	next_PID += 2;
 	
 	/* Update child's task_union */
 	// Modify @ret for child, so it will return a 0 (PID) through ret_form_fork

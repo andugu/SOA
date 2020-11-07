@@ -83,7 +83,7 @@ void test_fork_stats()
 	pid = fork();
 
 	// Make child lose time
-	if (pid != 0){
+	if (pid == 0){
 		int t;
 		for (int i = 0; i < 1000; ++i){
 			t = gettime();
@@ -95,7 +95,7 @@ void test_fork_stats()
 
 	// Kill child
 	int kill_child = 1;
-	if (pid != 0 && kill_child){
+	if (pid == 0 && kill_child){
 		write(1, "Killing child\n", strlen("Killing child\n"));
 		exit();
 		write(1, "If this is on your screen... something is wrong :(\n", strlen("If this is on your screen... something is wrong :(\n"));
@@ -119,6 +119,7 @@ int __attribute__ ((__section__(".text.main")))
 	test_fork_stats();
 
 	write(1, "Going to infinite loop, bye! :)", strlen("Going to infinite loop, bye! :)"));
+
 
   	while(1)
   	{
