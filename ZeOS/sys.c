@@ -62,7 +62,7 @@ int sys_fork()
 {
 	int PID = -1;
 
-	if (list_empty(&freequeue)) return -105; //ENOBUFS
+	if (list_empty(&freequeue)) return -28; //ENOSPC
 	
 	struct list_head *first_free = list_first(&freequeue);
 	list_del(first_free);

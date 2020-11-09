@@ -109,6 +109,68 @@ void test_fork_stats()
 	print_stats();
 }
 
+void test_multiple_forks()
+{
+	write(1, "Test reached with pid: ", strlen("Test reached with pid: "));
+	char buffer[64];
+	itoa(getpid(), buffer);
+	write(1, buffer, strlen(buffer));
+	write(1, "\n", strlen("\n"));
+
+
+	for (int i = 0; i < 15; ++i)
+	{
+		pid = fork();
+		if (pid == 0)
+			break;
+		if (pid < 0) perror();
+	}
+
+	// Make child lose time & say Hi
+	if (pid == 0)
+	{
+		int t;
+		for (int i = 0; i < 100*getpid(); ++i)
+		{
+			t = gettime();
+			char b[64];
+			itoa(t, b);
+			t = strlen(b);
+		}
+
+		write(1, "Hello, I'm: ", strlen("Hello, I'm: "));
+		char buffer_child[64];
+		itoa(getpid(), buffer_child);
+		write(1, buffer_child, strlen(buffer_child));
+		write(1, "\n", strlen("\n"));
+	}
+
+	// Kill child
+	int kill_child = 1;
+	if (pid == 0 && kill_child){
+		write(1, "Killing child\n", strlen("Killing child\n"));
+		exit();
+		write(1, "If this is on your screen... something is wrong :(\n", strlen("If this is on your screen... something is wrong :(\n"));
+	}
+
+	// Growing fathers user_ticks
+	int t;
+	for (int i = 0; i < 1000; ++i)
+	{
+		t = gettime();
+		char b[64];
+		itoa(t, b);
+		t = strlen(b);
+	}
+
+	write(1, "Pid is: ", strlen("Pid is: "));
+	itoa(getpid(), buffer);
+	write(1, buffer, strlen(buffer));
+	write(1, "\n", strlen("\n"));
+
+	print_stats();
+}
+
 int __attribute__ ((__section__(".text.main")))
   main(void)
 {
@@ -116,9 +178,11 @@ int __attribute__ ((__section__(".text.main")))
      /* __asm__ __volatile__ ("mov %0, %%cr3"::"r" (0) ); */
 	write(1, "    User program reached...\n", strlen("    User program reached...\n"));
 	
-	test_fork_stats();
+	// test_write_gettime();
+	// test_fork_stats();
+	test_multiple_forks();
 
-	write(1, "Going to infinite loop, bye! :)", strlen("Going to infinite loop, bye! :)"));
+	write(1, "Going to infinite loop, bye! :)\n", strlen("Going to infinite loop, bye! :)\n"));
 
 
   	while(1)

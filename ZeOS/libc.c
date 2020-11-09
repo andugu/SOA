@@ -71,6 +71,10 @@ void perror(void)
       write(1, "File table overflow\n", strlen("File table overflow\n"));
       break;
 
+    case 28: /*ENOSPC*/
+      write(1, "No space left on device\n", strlen("No space left on device\n"));
+      break;
+
     case 38: /*ENOSYS*/
       write(1, "Invalid system call number\n", strlen("Invalid system call number\n"));
       break;
