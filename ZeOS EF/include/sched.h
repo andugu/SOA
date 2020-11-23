@@ -11,8 +11,9 @@
 #include <stats.h>
 
 
-#define NR_TASKS      10
-#define KERNEL_STACK_SIZE	1024
+#define NR_TASKS            10
+#define NR_THREADS          20
+#define KERNEL_STACK_SIZE   1024
 
 enum state_t { ST_RUN, ST_READY, ST_BLOCKED };
 
@@ -24,15 +25,32 @@ struct task_struct {
   enum state_t state;		/* State of the process */
   int total_quantum;		/* Total quantum of the process */
   struct stats p_stats;		/* Process stats */
+  struct thread_union* threads[NR_THREADS]; /* Pointers to threads of the process */
 };
 
 union task_union {
   struct task_struct task;
-  unsigned long stack[KERNEL_STACK_SIZE];    /* pila de sistema, per procés */
+  // unsigned long stack[KERNEL_STACK_SIZE];    /* pila de sistema, per procés */
+};
+
+struct thread_struct {
+	int tid;		/* Thread ID */
+	struct localStorage_struct storage;
+};
+
+struct localStorage_struct {
+	int errno;
+	// Regs
+};
+
+union thread_union {
+  struct thread_struct thread;
+  unsigned long stack[KERNEL_STACK_SIZE];    /* pila de sistema, per thread */
 };
 
 extern union task_union protected_tasks[NR_TASKS+2];
 extern union task_union *task; /* Vector de tasques */
+extern union thread_union thread[NR_THREADS]; /* Vector de threads */
 extern struct task_struct *idle_task;
 
 
