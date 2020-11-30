@@ -21,23 +21,13 @@ enum state_t { ST_RUN, ST_READY, ST_BLOCKED };
 
 struct task_struct {
   int PID;						/* Process ID. This MUST be the first field of the struct. */
+  struct list_head list;				/* Task struct enqueuing. It MUST be the second field of the struct */
   page_table_entry * dir_pages_baseAddr;		/* Process directory */
-  struct list_head list;				/* Task struct enqueuing */
   enum state_t state;					/* State of the process */
   struct stats p_stats;					/* Process stats */
   int total_quantum;					/* Total quantum of the process */
   struct list_head readyThreads;		        /* List of threads of process ready to exec */
-  struct thread_union* threads[NR_THREADS];             /* Pointers to threads of the process */
-};
-
-struct thread_struct {
-	int TID;				        /* Thread ID */
-	int total_quantum;				/* Total quantum of the thread */
-	struct list_head list; 				/* Thread struct enqueuing */
-	enum state_t state;				/* State of the thread */
-	struct stats t_stats;				/* Thread stats */
-	struct localStorage_struct storage; 		/* Thread private storage */
-	unsigned long userStack				/* Pointer to start of User Stack */
+  struct thread_struct* threads[NR_THREADS];            /* Pointers to threads of the process */
 };
 
 struct localStorage_struct {
@@ -60,10 +50,30 @@ struct localStorage_struct {
 	unsigned long ss;
 };
 
+struct thread_struct {
+	int TID;				        /* Thread ID */
+	struct task_struct *Dad;			/* Pointer to Dad's task_struct */
+	int total_quantum;				/* Total quantum of the thread */
+	struct list_head list; 				/* Thread struct enqueuing */
+	enum state_t state;				/* State of the thread */
+	struct stats t_stats;				/* Thread stats */
+	struct localStorage_struct storage; 		/* Thread private storage */
+	unsigned long userStack;			/* Pointer to start of User Stack */
+	unsigned long register_esp;			/* kernel_esp. Used in task_switch */
+};
+
+
 union thread_union {
   struct thread_struct thread;
   unsigned long stack[KERNEL_STACK_SIZE]; /* Thread System Stack */
 };
+
+
+union task_union {
+  struct task_struct task;
+  unsigned long stack[KERNEL_STACK_SIZE];
+};
+
 
 struct sem_t {
 	int id; 			/* Semafor ID */
@@ -72,20 +82,21 @@ struct sem_t {
 	struct list_head blocked; 	/* Threads blocked by semafor */
 };
 
-extern task_struct protected_tasks[NR_TASKS+2];
-extern task_struct *task; /* Vector de tasques */
+extern struct task_struct protected_tasks[NR_TASKS+2];
+extern struct task_struct *task; /* Vector de tasques */
 
 extern union thread_union protected_thread[NR_THREADS+2];
 extern union thread_union *thread; /* Vector de threads */
 
 extern struct task_struct *idle_task;
+extern struct thread_struct *idle_thread;
 
 extern struct sem_t semafors[NR_SEMAFORS]; /* Vector de semafors */
 
 
 #define KERNEL_ESP(t)       	(DWord) &(t)->stack[KERNEL_STACK_SIZE]
 
-#define INITIAL_ESP       	KERNEL_ESP(&task[1])
+#define INITIAL_ESP       	KERNEL_ESP((union thread_union*)(task[1].threads[0]))
 
 extern struct list_head freequeue;
 extern struct list_head readyqueue;
@@ -105,8 +116,11 @@ void init_sched(void);
 void schedule(void);
 
 struct task_struct * current();
+struct thread_struct * current_thread();
 
 void task_switch(union task_union*t);
+void thread_switch(union thread_union*t);
+
 void switch_stack(int * save_sp, int new_sp);
 
 void sched_next_rr(void);
@@ -114,6 +128,7 @@ void sched_next_rr(void);
 void force_task_switch(void);
 
 struct task_struct *list_head_to_task_struct(struct list_head *l);
+struct thread_struct* list_head_to_thread_struct(struct list_head *l);
 
 int allocate_DIR(struct task_struct *t);
 
@@ -123,10 +138,16 @@ page_table_entry * get_DIR (struct task_struct *t) ;
 
 /* Headers for the scheduling policy */
 void sched_next_rr();
-void update_process_state_rr(struct task_struct *t, struct list_head *dest);
+void sched_next_thread();
+void sched_next_thread_another_proc(struct task_struct* c);
+void update_process_state_rr(struct task_struct *t, struct list_head *dst_queue);
+void update_thread_state_rr(struct thread_struct *t, struct list_head *dst_queue);
 int needs_sched_rr();
+int needs_sched_thread();
 void update_sched_data_rr();
 
 void init_stats(struct stats *s);
+
+int link_process_with_thread(struct task_struct* pro, struct thread_struct* thr);
 
 #endif  /* __SCHED_H__ */

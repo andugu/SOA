@@ -8,6 +8,10 @@
 
 #include <stats.h>
 
+struct pthread_t {
+	int tid;
+};
+
 extern int errno;
 
 int write(int fd, char *buffer, int size);
@@ -27,5 +31,12 @@ void exit();
 int yield();
 
 int get_stats(int pid, struct stats *st);
+
+int pthread_create(struct pthread_t *thread, void *(*start_routine) (void *), void *arg);
+
+void pthread_exit(void *retval);
+
+int pthread_join(struct pthread_t thread, void **retval);
+
 
 #endif  /* __LIBC_H__ */

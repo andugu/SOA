@@ -24,9 +24,31 @@ ENTRY(task_switch)
 	popl %ebp
 	ret
 
+/* void thread_switch(union thread_union *new) */
+ENTRY(thread_switch)
+	pushl %ebp
+	movl %esp, %ebp
+	pushl %esi
+	pushl %edi
+	pushl %ebx
+	pushl 8(%ebp)
+	call inner_thread_switch
+	addl $4, %esp
+	popl %ebx
+	popl %edi
+	popl %esi
+	popl %ebp
+	ret
+
 /* void * get_ebp(void) */
 ENTRY(get_ebp)
 	mov %ebp, %eax
+	ret
+
+/* void setESP(void * new_sp) */
+ENTRY(setESP)
+	movl 4(%esp), %esp
+	popl %ebp
 	ret
 
 /* void setMSR(unsigned long msr_number, unsigned long high, unsigned long low)*/

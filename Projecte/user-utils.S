@@ -100,3 +100,47 @@ ENTRY(get_stats)
 	popl %ebp
 	ret
 
+/* int pthread_create(pthread_t *thread, void *(*start_routine) (void *), void *arg) */
+ENTRY(pthread_create)
+	pushl %ebp
+	movl %esp, %ebp
+	pushl %ebx;  // Save EBX, ESI and EDI if modified
+	movl $26, %eax
+	movl 0x8(%ebp), %ebx;	// thread
+	movl 0xC(%ebp), %ecx;	// *start_routine
+	movl 0x10(%ebp), %edx;	// *arg
+	call syscall_sysenter
+	popl %ebx
+	test %eax, %eax
+	js nok	// if (eax < 0) -> 
+	popl %ebp
+	ret
+
+/* void pthread_exit(void *retval) */
+ENTRY(pthread_exit)
+	pushl %ebp
+	movl %esp, %ebp
+	pushl %ebx;  // Save EBX, ESI and EDI if modified
+	movl $27, %eax
+	movl 0x8(%ebp), %ebx;	// *retval
+	call syscall_sysenter
+	popl %ebx
+	test %eax, %eax
+	js nok	// if (eax < 0) -->
+	popl %ebp
+	ret
+
+/* int pthread_join(pthread_t thread, void **retval) */
+ENTRY(pthread_join)
+	pushl %ebp
+	movl %esp, %ebp
+	pushl %ebx;  // Save EBX, ESI and EDI if modified
+	movl $28, %eax
+	movl 0x8(%ebp), %ebx;	// thread
+	movl 0xC(%ebp), %ecx;	// *retval
+	call syscall_sysenter
+	popl %ebx
+	test %eax, %eax
+	js nok	// if (eax < 0) -->
+	popl %ebp
+	ret

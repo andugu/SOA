@@ -236,3 +236,28 @@ int sys_get_stats(int pid, struct stats *st)
   }
   return -ESRCH; /*ESRCH */
 }
+
+struct pthread_t {
+	int tid;
+};
+
+
+int sys_pthread_create(struct pthread_t *thread, void *(*start_routine) (void *), void *arg)
+{
+	
+	return 0;
+}
+
+
+void sys_pthread_exit(void *retval)
+{
+	
+	
+}
+
+
+int sys_pthread_join(struct pthread_t thread, void **retval)
+{
+	
+	return 0;
+}
