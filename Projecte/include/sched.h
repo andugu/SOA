@@ -13,21 +13,21 @@
 
 #define NR_TASKS            10
 #define NR_THREADS          20
-#define NR_SEMAFORS 	    20
+#define NR_SEMAFORS         20
 #define KERNEL_STACK_SIZE   1024
 #define USER_STACK_SIZE	    1024
 
 enum state_t { ST_RUN, ST_READY, ST_BLOCKED };
 
 struct task_struct {
-  int PID;						/* Process ID. This MUST be the first field of the struct. */
-  struct list_head list;				/* Task struct enqueuing. It MUST be the second field of the struct */
-  page_table_entry * dir_pages_baseAddr;		/* Process directory */
-  enum state_t state;					/* State of the process */
-  struct stats p_stats;					/* Process stats */
-  int total_quantum;					/* Total quantum of the process */
-  struct list_head readyThreads;		        /* List of threads of process ready to exec */
-  struct thread_struct* threads[NR_THREADS];            /* Pointers to threads of the process */
+  int PID;                                      /* Process ID. This MUST be the first field of the struct. */
+  struct list_head list;                        /* Task struct enqueuing. It MUST be the second field of the struct */
+  page_table_entry * dir_pages_baseAddr;        /* Process directory */
+  enum state_t state;                           /* State of the process */
+  struct stats p_stats;                         /* Process stats */
+  int total_quantum;                            /* Total quantum of the process */
+  struct list_head readyThreads;                /* List of threads of process ready to exec */
+  struct thread_struct* threads[NR_THREADS];    /* Pointers to threads of the process */
 };
 
 struct localStorage_struct {
@@ -51,36 +51,34 @@ struct localStorage_struct {
 };
 
 struct thread_struct {
-	int TID;				        /* Thread ID */
-	struct task_struct *Dad;			/* Pointer to Dad's task_struct */
-	int total_quantum;				/* Total quantum of the thread */
-	struct list_head list; 				/* Thread struct enqueuing */
-	enum state_t state;				/* State of the thread */
-	struct stats t_stats;				/* Thread stats */
-	struct localStorage_struct storage; 		/* Thread private storage */
-	unsigned long userStack;			/* Pointer to start of User Stack */
-	unsigned long register_esp;			/* kernel_esp. Used in task_switch */
+	int TID;                                   /* Thread ID */
+	struct task_struct *Dad;                   /* Pointer to Dad's task_struct */
+	int total_quantum;                         /* Total quantum of the thread */
+	struct list_head list;                     /* Thread struct enqueuing */
+	enum state_t state;                        /* State of the thread */
+	struct stats t_stats;                      /* Thread stats */
+	struct localStorage_struct storage;        /* Thread private storage */
+	unsigned long userStack;                   /* Pointer to start of User Stack */
 };
-
 
 union thread_union {
   struct thread_struct thread;
-  unsigned long stack[KERNEL_STACK_SIZE]; /* Thread System Stack */
+  unsigned long stack[KERNEL_STACK_SIZE];      /* Thread System Stack */
 };
 
-
+/* Remove when full transition completed */
 union task_union {
   struct task_struct task;
   unsigned long stack[KERNEL_STACK_SIZE];
 };
 
-
 struct sem_t {
-	int id; 			/* Semafor ID */
-	int count; 			/* Blocked counter */
-	struct list_head list; 		/* Semafor struct enqueuing */
-	struct list_head blocked; 	/* Threads blocked by semafor */
+	int id;                                    /* Semafor ID */
+	int count;                                 /* Blocked counter */
+	struct list_head list;                     /* Semafor struct enqueuing */
+	struct list_head blocked;                  /* Threads blocked by semafor */
 };
+
 
 extern struct task_struct protected_tasks[NR_TASKS+2];
 extern struct task_struct *task; /* Vector de tasques */

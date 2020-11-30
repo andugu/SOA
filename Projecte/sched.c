@@ -280,7 +280,7 @@ void init_idle (void)
   uc->stack[KERNEL_STACK_SIZE-1]=(unsigned long)&cpu_idle; /* Return address */
   uc->stack[KERNEL_STACK_SIZE-2]=0; /* register ebp */
 
-  thr->register_esp=(int)&(uc->stack[KERNEL_STACK_SIZE-2]); /* top of the stack */
+  thr->storage.esp=(int)&(uc->stack[KERNEL_STACK_SIZE-2]); /* top of the stack */
 
   idle_task=c;
   idle_thread=thr;
@@ -415,8 +415,8 @@ void inner_thread_switch(union thread_union *new)
 //  set_cr3(new_DIR);
 
   //switch_stack(&current_thread()->register_esp, new->thread.register_esp); No m'agrada la funció -> he agafat la del E1
-  current_thread()->register_esp = (unsigned long) get_ebp();
-  setESP(&(new->thread.register_esp));
+  current_thread()->storage.esp = (unsigned long) get_ebp();
+  setESP(&(new->thread.storage.esp));
 }
 
 
