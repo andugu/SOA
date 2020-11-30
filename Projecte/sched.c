@@ -15,10 +15,16 @@
  * Container for the Task array and 2 additional pages (the first and the last one)
  * to protect against out of bound accesses.
  */
-union task_union protected_tasks[NR_TASKS+2]
+task_struct protected_tasks[NR_TASKS+2]
   __attribute__((__section__(".data.task")));
+task_struct *task = &protected_tasks[1]; /* == task_struct task[NR_TASKS] */
 
-union task_union *task = &protected_tasks[1]; /* == union task_union task[NR_TASKS] */
+union thread_union protected_thread[NR_THREADS+2]
+  __attribute__((__section__(".data.thread")));
+union thread_union *thread = &protected_thread[1]; /* == union thread_union thread[NR_TASKS] */
+
+// Semafors
+struct sem_t semafors[NR_SEMAFORS];
 
 #if 0
 struct task_struct *list_head_to_task_struct(struct list_head *l)
@@ -33,6 +39,10 @@ extern struct list_head blocked;
 struct list_head freequeue;
 // Ready queue
 struct list_head readyqueue;
+// freeThread queue
+struct list_head freeThread;
+// freeSemafor queue
+struct list_head freeSemafor;
 
 void init_stats(struct stats *s)
 {
