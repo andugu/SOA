@@ -131,14 +131,14 @@ int sys_fork(void)
   register_ebp = (int) get_ebp();
   register_ebp=(register_ebp - (int)current()) + (int)(uchild);
 
-  uchild->task.register_esp=register_ebp + sizeof(DWord);
+//  uchild->task.register_esp=register_ebp + sizeof(DWord);
 
-  DWord temp_ebp=*(DWord*)register_ebp;
+//  DWord temp_ebp=*(DWord*)register_ebp;
   /* Prepare child stack for context switch */
-  uchild->task.register_esp-=sizeof(DWord);
-  *(DWord*)(uchild->task.register_esp)=(DWord)&ret_from_fork;
-  uchild->task.register_esp-=sizeof(DWord);
-  *(DWord*)(uchild->task.register_esp)=temp_ebp;
+//  uchild->task.register_esp-=sizeof(DWord);
+//  *(DWord*)(uchild->task.register_esp)=(DWord)&ret_from_fork;
+//  uchild->task.register_esp-=sizeof(DWord);
+//  *(DWord*)(uchild->task.register_esp)=temp_ebp;
 
   /* Set stats to 0 */
   init_stats(&(uchild->task.p_stats));
@@ -240,7 +240,6 @@ int global_TID=1000;
 int sys_pthread_create(int *id, unsigned int* start_routine, void *arg)
 {
   struct list_head *lhcurrent = NULL;
-  struct thread_struct *thr;
   
   /* Any free threads? */
   if (list_empty(&freeThread)) return -ENOMEM;
@@ -248,8 +247,8 @@ int sys_pthread_create(int *id, unsigned int* start_routine, void *arg)
   lhcurrent = list_first(&freeThread);
   list_del(lhcurrent);
 
-  thr = (struct thread_struct*)list_head_to_thread_struct(lhcurrent);
-  thr_u = (union thread_union*)list_head_to_thread_struct(lhcurrent);
+  struct thread_struct *thr = (struct thread_struct*)list_head_to_thread_struct(lhcurrent);
+  union thread_union *thr_u = (union thread_union*)list_head_to_thread_struct(lhcurrent);
 
   if (link_process_with_thread(current(), thr) < 0) return -ENOMEM;
   /* link_process_with_thread already adds thr to readyThreads */
@@ -299,7 +298,7 @@ int sys_sem_init(int* id, unsigned int value)
 
   *id = sem->id;
   sem->count = value;
-  INIT_LIST_HEAD(sem->blocked);
+  INIT_LIST_HEAD(&(sem->blocked)); // Jo crec que això donaria error pq. si fem exit de un semàfor però després el tornem a inicialitzar, fariem init_list_head de llista ja inicialitzada
 
   return 0;
 }
@@ -341,7 +340,7 @@ int sys_sem_post(int id)
       update_process_state_rr(thr->Dad, &readyqueue);
     }
 
-    update_thread_state_rr(thr, thr->Dad->readyThreads);
+    update_thread_state_rr(thr, &(thr->Dad->readyThreads));
   }
 
   return 0;
