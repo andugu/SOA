@@ -30,26 +30,6 @@ struct task_struct {
   struct thread_struct* threads[NR_THREADS];    /* Pointers to threads of the process */
 };
 
-struct localStorage_struct {
-	int errno;
-	unsigned long ebx;
-	unsigned long ecx;
-	unsigned long edx;
-	unsigned long esi;
-	unsigned long edi;
-	unsigned long ebp;
-	unsigned long eax;
-	unsigned long ds;
-	unsigned long es;
-	unsigned long fs;
-	unsigned long gs;
-	unsigned long eip;
-	unsigned long cs;
-	unsigned long flags;
-	unsigned long esp;
-	unsigned long ss;
-};
-
 struct thread_struct {
 	int TID;                                   /* Thread ID */
 	struct task_struct *Dad;                   /* Pointer to Dad's task_struct */
@@ -57,8 +37,10 @@ struct thread_struct {
 	struct list_head list;                     /* Thread struct enqueuing */
 	enum state_t state;                        /* State of the thread */
 	struct stats t_stats;                      /* Thread stats */
-	struct localStorage_struct storage;        /* Thread private storage */
+    unsigned int kernel_esp;                   /* Thread kernel %esp reg */
 	unsigned long userStack;                   /* Pointer to start of User Stack */
+	/* Thread private storage */
+	int errno;
 };
 
 union thread_union {
@@ -66,7 +48,7 @@ union thread_union {
   unsigned long stack[KERNEL_STACK_SIZE];      /* Thread System Stack */
 };
 
-/* Remove when full transition completed */
+/* TODO: Remove when full transition completed */
 union task_union {
   struct task_struct task;
   unsigned long stack[KERNEL_STACK_SIZE];
@@ -116,17 +98,23 @@ void schedule(void);
 struct task_struct * current();
 struct thread_struct * current_thread();
 
-void task_switch(union task_union*t);
 void thread_switch(union thread_union*t);
 
 void switch_stack(int * save_sp, int new_sp);
 
 void sched_next_rr(void);
 
+int check_current_threads_blocked();
+int check_blocked_threads(struct task_struct *t);
+
 void force_task_switch(void);
+void force_task_switch_to_blocked(void);
+void force_thread_switch(void);
+void force_thread_switch_to_blocked(struct list_head* blocked);
 
 struct task_struct *list_head_to_task_struct(struct list_head *l);
 struct thread_struct* list_head_to_thread_struct(struct list_head *l);
+struct sem_t* list_head_to_sem_t(struct list_head *l);
 
 int allocate_DIR(struct task_struct *t);
 
@@ -137,7 +125,7 @@ page_table_entry * get_DIR (struct task_struct *t) ;
 /* Headers for the scheduling policy */
 void sched_next_rr();
 void sched_next_thread();
-void sched_next_thread_another_proc(struct task_struct* c);
+void sched_next_thread_of_proc(struct task_struct* c);
 void update_process_state_rr(struct task_struct *t, struct list_head *dst_queue);
 void update_thread_state_rr(struct thread_struct *t, struct list_head *dst_queue);
 int needs_sched_rr();

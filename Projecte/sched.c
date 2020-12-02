@@ -26,13 +26,6 @@ union thread_union *thread = &protected_thread[1]; /* == union thread_union thre
 // Semafors
 struct sem_t semafors[NR_SEMAFORS];
 
-#if 0
-struct task_struct *list_head_to_task_struct(struct list_head *l)
-{
-  return list_entry( l, struct task_struct, list);
-}
-#endif
-
 extern struct list_head blocked;
 
 // Free task structs
@@ -61,24 +54,17 @@ page_table_entry * get_DIR (struct task_struct *t)
 	return t->dir_pages_baseAddr;
 }
 
-
-/************************* NO SE SI ENCARA FUNCIONA *************************/
 /* get_PT - Returns the Page Table address for task 't' */
-page_table_entry * get_PT (struct task_struct *t) 
+page_table_entry * get_PT (struct task_struct *t)
 {
 	return (page_table_entry *)(((unsigned int)(t->dir_pages_baseAddr->bits.pbase_addr))<<12);
 }
 
-
-/************************* NO SE SI ENCARA FUNCIONA *************************/
+/* allocate_DIR - allocated a dir for a task 't' using the task vector */
 int allocate_DIR(struct task_struct *t) 
 {
 	int pos;
-
-//	pos = ((int)t-(int)task)/sizeof(union task_union);
-
-	pos = ((int)t-(int)task)/sizeof(struct task_struct); // Crec que funcionarà així
-
+	pos = ((int)t-(int)task)/sizeof(struct task_struct);
 	t->dir_pages_baseAddr = (page_table_entry*) &dir_pages[pos]; 
 
 	return 1;
@@ -97,18 +83,8 @@ void cpu_idle(void)
 #define DEFAULT_QUANTUM 10
 #define DEFAULT_QUANTUM_THREAD 5
 
-int remaining_quantum=0;
+int remaining_quantum = 0;
 int remaining_thread_quantum = 0;
-
-int get_quantum(struct task_struct *t)
-{
-  return t->total_quantum;
-}
-
-void set_quantum(struct task_struct *t, int new_quantum)
-{
-  t->total_quantum=new_quantum;
-}
 
 struct task_struct *idle_task=NULL;
 struct thread_struct *idle_thread=NULL;
@@ -122,7 +98,7 @@ void update_sched_data_rr(void)
 int needs_sched_rr(void)
 {
   if ((remaining_quantum==0)&&(!list_empty(&readyqueue))) return 1;
-  if (remaining_quantum==0) remaining_quantum=get_quantum(current());
+  if (remaining_quantum==0) remaining_quantum=current()->total_quantum;
   return 0;
 }
 
@@ -146,8 +122,13 @@ void update_process_state_rr(struct task_struct *t, struct list_head *dst_queue)
       t->state=ST_READY;
     }
   }
-  else t->state=ST_RUN;
-  update_thread_state_rr(current_thread(), &(current()->readyThreads));
+  else
+  {
+    t->state=ST_RUN;
+  }
+
+  /* TODO: why? */
+  // update_thread_state_rr(current_thread(), &(current()->readyThreads));
 }
 
 void update_thread_state_rr(struct thread_struct *t, struct list_head *dst_queue)
@@ -159,7 +140,7 @@ void update_thread_state_rr(struct thread_struct *t, struct list_head *dst_queue
     if (dst_queue!=&(current()->readyThreads)) t->state=ST_BLOCKED;
     else
     {
-//      update_stats(&(t->p_stats.system_ticks), &(t->p_stats.elapsed_total_ticks));
+      update_stats(&(t->t_stats.system_ticks), &(t->t_stats.elapsed_total_ticks));
       t->state=ST_READY;
     }
   }
@@ -179,18 +160,15 @@ void sched_next_rr(void)
   else t=idle_task;
 
   t->state=ST_RUN;
-  remaining_quantum=get_quantum(t);
+  remaining_quantum=t->total_quantum;
 
   update_stats(&(current()->p_stats.system_ticks), &(current()->p_stats.elapsed_total_ticks));
   update_stats(&(t->p_stats.ready_ticks), &(t->p_stats.elapsed_total_ticks));
   t->p_stats.total_trans++;
 
-  sched_next_thread_another_proc(t);
+  sched_next_thread_of_proc(t);
 
-/* New address space */
   set_cr3(current()->dir_pages_baseAddr);
-
-//  task_switch((union task_union*)t);
 }
 
 void sched_next_thread(void)
@@ -198,41 +176,61 @@ void sched_next_thread(void)
   struct list_head *e;
   struct thread_struct *t;
 
-  if (!list_empty(&(current()->readyThreads))) {
+  if (!list_empty(&(current()->readyThreads)))
+  {
     e = list_first(&(current()->readyThreads));
     list_del(e);
-    t=list_head_to_thread_struct(e);
+    t = list_head_to_thread_struct(e);
   }
-  else t=idle_thread;
+
+  else
+  {
+    if (!check_current_threads_blocked())
+      /* If a process has no unblocked threads left */
+      force_task_switch_to_blocked();
+    else
+      /* No threads to run but not blocked */
+      force_task_switch();
+  }
 
   t->state=ST_RUN;
   remaining_thread_quantum=t->total_quantum;
 
-  //update_stats(&(current()->p_stats.system_ticks), &(current()->p_stats.elapsed_total_ticks));
-  //update_stats(&(t->p_stats.ready_ticks), &(t->p_stats.elapsed_total_ticks));
-  //t->p_stats.total_trans++;
+  update_stats(&(current_thread()->t_stats.system_ticks), &(current_thread()->t_stats.elapsed_total_ticks));
+  update_stats(&(t->t_stats.ready_ticks), &(t->t_stats.elapsed_total_ticks));
+  t->t_stats.total_trans++;
 
   thread_switch((union thread_union*)t);
 }
 
-void sched_next_thread_another_proc(struct task_struct* c)
+void sched_next_thread_of_proc(struct task_struct* c)
 {
   struct list_head *e;
   struct thread_struct *t;
 
-  if (!list_empty(&(c->readyThreads))) {
+  if (!list_empty(&(c->readyThreads)))
+  {
     e = list_first(&(c->readyThreads));
     list_del(e);
     t=list_head_to_thread_struct(e);
   }
-  else t=idle_thread;
+
+  else
+  {
+    if (!check_current_threads_blocked())
+      /* If a process has no unblocked threads left */
+      force_task_switch_to_blocked();
+    else
+      /* No threads to run but not blocked */
+      force_task_switch();
+  }
 
   t->state=ST_RUN;
   remaining_thread_quantum=t->total_quantum;
 
-  //update_stats(&(current()->p_stats.system_ticks), &(current()->p_stats.elapsed_total_ticks));
-  //update_stats(&(t->p_stats.ready_ticks), &(t->p_stats.elapsed_total_ticks));
-  //t->p_stats.total_trans++;
+  update_stats(&(current_thread()->t_stats.system_ticks), &(current_thread()->t_stats.elapsed_total_ticks));
+  update_stats(&(t->t_stats.ready_ticks), &(t->t_stats.elapsed_total_ticks));
+  t->t_stats.total_trans++;
 
   thread_switch((union thread_union*)t);
 }
@@ -240,18 +238,21 @@ void sched_next_thread_another_proc(struct task_struct* c)
 void schedule()
 {
   update_sched_data_rr();
-  if (needs_sched_rr()) // process level scheduling
+  /* Process Level Scheduling */
+  if (needs_sched_rr())
   {
     update_process_state_rr(current(), &readyqueue);
     sched_next_rr();
-//    sched_next_thread();
   }
-  if (needs_sched_thread()) // thread level scheduling
+  /* Thread Level Scheduling */
+  if (needs_sched_thread())
   {
     update_thread_state_rr(current_thread(), &(current()->readyThreads));
     sched_next_thread();
   }
 }
+
+void setMSR(unsigned long msr_number, unsigned long high, unsigned long low);
 
 void init_idle (void)
 {
@@ -270,23 +271,24 @@ void init_idle (void)
   thr->total_quantum=DEFAULT_QUANTUM_THREAD;
 
   c->PID=0;
-
   c->total_quantum=DEFAULT_QUANTUM;
 
   init_stats(&c->p_stats);
+  init_stats(&thr->t_stats);
 
   allocate_DIR(c);
 
-  uc->stack[KERNEL_STACK_SIZE-1]=(unsigned long)&cpu_idle; /* Return address */
-  uc->stack[KERNEL_STACK_SIZE-2]=0; /* register ebp */
+  /* Return address */
+  uc->stack[KERNEL_STACK_SIZE-1]=(unsigned long)&cpu_idle;
+  /* Register %ebp */
+  uc->stack[KERNEL_STACK_SIZE-2]=0;
 
-  thr->storage.esp=(int)&(uc->stack[KERNEL_STACK_SIZE-2]); /* top of the stack */
+  /* Top of the stack */
+  thr->kernel_esp=(int)&(uc->stack[KERNEL_STACK_SIZE-2]);
 
   idle_task=c;
   idle_thread=thr;
 }
-
-void setMSR(unsigned long msr_number, unsigned long high, unsigned long low);
 
 void init_task1(void)
 {
@@ -304,17 +306,17 @@ void init_task1(void)
   thr->TID = 1;
   thr->total_quantum = DEFAULT_QUANTUM_THREAD;
   thr->state = ST_RUN;
-//thr->userStack = ????????????????????????????
+  /* TODO: User Stack */
 
   c->PID=1;
-
   c->total_quantum=DEFAULT_QUANTUM;
-
   c->state=ST_RUN;
 
   remaining_quantum=c->total_quantum;
+  remaining_thread_quantum = thr->total_quantum;
 
   init_stats(&c->p_stats);
+  init_stats(&thr->t_stats);
 
   allocate_DIR(c);
 
@@ -328,12 +330,10 @@ void init_task1(void)
 
 void init_freequeue()
 {
-  int i;
-
   INIT_LIST_HEAD(&freequeue);
 
   /* Insert all task structs in the freequeue */
-  for (i=0; i<NR_TASKS; i++)
+  for (int i = 0; i < NR_TASKS; i++)
   {
     task[i].PID=-1;
     list_add_tail(&(task[i].list), &freequeue);
@@ -342,15 +342,25 @@ void init_freequeue()
 
 void init_freeThread()
 {
-  int i;
-
   INIT_LIST_HEAD(&freeThread);
 
   /* Insert all thread structs in the freeThread */
-  for (i=0; i<NR_THREADS; i++)
+  for (int i = 0; i < NR_THREADS; i++)
   {
     thread[i].thread.TID=-1;
     list_add_tail(&(thread[i].thread.list), &freeThread);
+  }
+}
+
+void init_freeSemafor()
+{
+  INIT_LIST_HEAD(&freeSemafor);
+
+  /* Insert all thread structs in the freeThread */
+  for (int i = 0; i < NR_SEMAFORS; i++)
+  {
+    semafors[i].id=i;
+    list_add_tail(&(semafors[i].list), &freeSemafor);
   }
 }
 
@@ -358,6 +368,7 @@ void init_sched()
 {
   init_freequeue();
   init_freeThread();
+  init_freeSemafor();
   INIT_LIST_HEAD(&readyqueue);
 }
 
@@ -374,81 +385,111 @@ struct task_struct* current()
 
 struct thread_struct* list_head_to_thread_struct(struct list_head *l)
 {
-  return (struct thread_struct*)((int)l&0xfffff000);
+  return list_entry(l, struct thread_struct, list);
 }
 
 struct task_struct* list_head_to_task_struct(struct list_head *l)
 {
-  return (struct task_struct*)((int*)(((int*)l)-1)); // List is the second attribute in task_struct
+  return list_entry(l, struct task_struct, list);
 }
 
-/* Do the magic of a task switch */
-void inner_task_switch(union task_union *new)
+struct sem_t* list_head_to_sem_t(struct list_head *l)
 {
-/*
-  page_table_entry *new_DIR = get_DIR(&new->task);
-
-  /* Update TSS and MSR to make it point to the new stack
-  tss.esp0=(int)&(new->stack[KERNEL_STACK_SIZE]);
-  setMSR(0x175, 0, (unsigned long)&(new->stack[KERNEL_STACK_SIZE]));
-
-  /* TLB flush. New address space
-  set_cr3(new_DIR);
-
-  switch_stack(&current()->register_esp, new->task.register_esp); */
+  return list_entry(l, struct sem_t, list);
 }
 
 void * get_ebp(void);
 void setESP(void * new_sp);
 
-
 /* Do the magic of a thread switch */
 void inner_thread_switch(union thread_union *new)
 {
-//  page_table_entry *new_DIR = get_DIR(&new->task);
-
   /* Update TSS and MSR to make it point to the new stack */
   tss.esp0=(int)&(new->stack[KERNEL_STACK_SIZE]);
   setMSR(0x175, 0, (unsigned long)&(new->stack[KERNEL_STACK_SIZE]));
 
-  /* TLB flush. Not new address space */
-//  set_cr3(new_DIR);
-
-  //switch_stack(&current_thread()->register_esp, new->thread.register_esp); No m'agrada la funció -> he agafat la del E1
-  current_thread()->storage.esp = (unsigned long) get_ebp();
-  setESP(&(new->thread.storage.esp));
+  //switch_stack(&current_thread()->kernel_esp, new->thread.kernel_esp);
+  current_thread()->kernel_esp = (unsigned long) get_ebp();
+  setESP(&(new->thread.kernel_esp));
 }
 
+/* Checks if current process has unblocked threads 
+ * Pre: none
+ * Post:
+      0 -> all threads of current process blocked 
+      1 -> not all threads blocked */
+int check_current_threads_blocked()
+{
+  int ret = 0;
 
+  for (int i = 0; i < NR_THREADS; ++i)
+    if (current()->threads[i]->state != ST_BLOCKED)
+      ret = 1;
+
+  return ret;
+}
+
+/* Checks if a process 't' has unblocked threads 
+ * Pre: none
+ * Post:
+      0 -> all threads of current process blocked 
+      1 -> not all threads blocked */
+int check_blocked_threads(struct task_struct *t)
+{
+  int ret = 0;
+
+  for (int i = 0; i < NR_THREADS; ++i)
+    if (t->threads[i]->state != ST_BLOCKED)
+      ret = 1;
+
+  return ret;
+}
 
 /* Force a task switch assuming that the scheduler does not work with priorities */
 void force_task_switch()
 {
   update_process_state_rr(current(), &readyqueue);
-
   sched_next_rr();
 }
 
+/* Force task switch when no unblocked threads left */
+void force_task_switch_to_blocked()
+{
+  update_process_state_rr(current(), &blocked);
+  sched_next_rr();
+}
 
-/*
-thr must be a free thread, who has previously made list_del(thr)
-Return value:
-	0 -> Everything ok
-	-1 -> pro has 10 threads already
-	-2 -> pro has a thread with same TID as thr
-*/
-int link_process_with_thread(struct task_struct* pro, struct thread_struct* thr) {
-	int pos = -1;
-	for (int i=0; i < NR_THREADS; i++) {
-		if (pro->threads[i]->TID == thr->TID) return -2;
-		if (pos == -1 && pro->threads[i]->TID == -1) pos = i;
+/* Force a thread switch */
+void force_thread_switch()
+{
+  update_thread_state_rr(current_thread(), &(current()->readyThreads));
+  sched_next_thread();
+}
+
+/* Force a thread switch to a specific blocked list */
+void force_thread_switch_to_blocked(struct list_head* blocked)
+{
+  update_thread_state_rr(current_thread(), blocked);
+  sched_next_thread();
+}
+
+/* Links a process and a thread 
+ * Pre: thr must be a free thread not on freeThread list
+ * Post:
+      0  -> OK!
+      -1 -> pro already has 10 threads
+      -2 -> pro already has a thread with the same TID */
+int link_process_with_thread(struct task_struct* pro, struct thread_struct* thr)
+{
+  int pos = -1;
+  for (int i=0; i < NR_THREADS; i++) {
+    if (pro->threads[i]->TID == thr->TID) return -2;
+    if (pos == -1 && pro->threads[i]->TID == -1) pos = i;
 	}
 	if (pos < 0) return pos;
 	
 	pro->threads[pos] = thr;
 	list_add_tail(&(thr->list), &(pro->readyThreads));
-	thr->Dad = pro;	
+	thr->Dad = pro;
 	return 0;
 }
-
-

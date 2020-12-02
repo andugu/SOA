@@ -219,45 +219,146 @@ int sys_yield()
 extern int remaining_quantum;
 
 int sys_get_stats(int pid, struct stats *st)
-{
-  int i;
-  
+{  
   if (!access_ok(VERIFY_WRITE, st, sizeof(struct stats))) return -EFAULT; 
   
-  if (pid<0) return -EINVAL;
-  for (i=0; i<NR_TASKS; i++)
+  if (pid < 0) return -EINVAL;
+  for (int i = 0; i < NR_TASKS; i++)
   {
-    if (task[i].task.PID==pid)
+    if (task[i].PID == pid)
     {
-      task[i].task.p_stats.remaining_ticks=remaining_quantum;
-      copy_to_user(&(task[i].task.p_stats), st, sizeof(struct stats));
+      task[i].p_stats.remaining_ticks = remaining_quantum;
+      copy_to_user(&(task[i].p_stats), st, sizeof(struct stats));
       return 0;
     }
   }
   return -ESRCH; /*ESRCH */
 }
 
-struct pthread_t {
-	int tid;
-};
+int global_TID=1000;
 
-
-int sys_pthread_create(struct pthread_t *thread, void *(*start_routine) (void *), void *arg)
+int sys_pthread_create(int *id, unsigned int* start_routine, void *arg)
 {
-	
+  struct list_head *lhcurrent = NULL;
+  struct thread_struct *thr;
+  
+  /* Any free threads? */
+  if (list_empty(&freeThread)) return -ENOMEM;
+
+  lhcurrent = list_first(&freeThread);
+  list_del(lhcurrent);
+
+  thr = (struct thread_struct*)list_head_to_thread_struct(lhcurrent);
+  thr_u = (union thread_union*)list_head_to_thread_struct(lhcurrent);
+
+  if (link_process_with_thread(current(), thr) < 0) return -ENOMEM;
+  /* link_process_with_thread already adds thr to readyThreads */
+
+  /* TODO: Add values to regs? */
+
+  /* Redirect exec to @start_routine */
+  /* Return address */
+  thr_u->stack[KERNEL_STACK_SIZE-1]=(unsigned long)start_routine;
+  /* Register %ebp */
+  thr_u->stack[KERNEL_STACK_SIZE-2]=0;
+  /* Top of the stack */
+  thr->kernel_esp=(int)&(thr_u->stack[KERNEL_STACK_SIZE-2]);
+  
+  /* TODO: User Stack? */
+
+  thr->TID=++global_TID;
+  *id = thr->TID;
+
 	return 0;
 }
 
-
-void sys_pthread_exit(void *retval)
+void sys_pthread_exit(int *retval)
 {
-	
-	
+	return;
 }
 
-
-int sys_pthread_join(struct pthread_t thread, void **retval)
+int sys_pthread_join(int id, int *retval)
 {
-	
 	return 0;
+}
+
+int sys_sem_init(int* id, unsigned int value)
+{
+  struct list_head *lhcurrent = NULL;
+  struct sem_t *sem;
+  
+  /* Any free semafor? */
+  if (list_empty(&freeSemafor)) return -ENOMEM;
+  /* Incorrect value */
+  if (value > NR_THREADS || value < 0) return -EINVAL;
+
+  lhcurrent = list_first(&freeSemafor);
+  list_del(lhcurrent);
+
+  sem = (struct sem_t*)list_head_to_sem_t(lhcurrent);
+
+  *id = sem->id;
+  sem->count = value;
+  INIT_LIST_HEAD(sem->blocked);
+
+  return 0;
+}
+
+int sys_sem_wait(int id)
+{
+  /* Invalid id */
+  if (id < 0 || id >= NR_SEMAFORS) return -EINVAL;
+
+  struct sem_t *sem = &semafors[id];
+
+  sem->count--;
+  if (sem->count < 0)
+    /* Block thread */
+    force_thread_switch_to_blocked(&sem->blocked);
+
+  return 0;
+}
+
+int sys_sem_post(int id)
+{
+  /* Invalid id */
+  if (id < 0 || id >= NR_SEMAFORS) return -EINVAL;
+
+  struct sem_t *sem = &semafors[id];
+
+  sem->count++;
+  if (sem->count <= 0)
+  {
+    /* Wake one thread on blocked queue */
+    struct list_head *lhcurrent = list_first(&sem->blocked);
+    /* update_thread_state_rr already does list_del() */
+
+    struct thread_struct* thr = list_head_to_thread_struct(lhcurrent);
+
+    if (!check_blocked_threads(thr->Dad)){
+      /* All threads of process blocked */
+      /* Process is in ST_BLOCKED state */
+      update_process_state_rr(thr->Dad, &readyqueue);
+    }
+
+    update_thread_state_rr(thr, thr->Dad->readyThreads);
+  }
+
+  return 0;
+}
+
+int sys_sem_destroy(int id)
+{
+  /* Invalid id */
+  if (id < 0 || id >= NR_SEMAFORS) return -EINVAL;
+
+  struct sem_t *sem = &semafors[id];
+
+  /* Semafor still in use */
+  if (!list_empty(&sem->blocked)) return -EINVAL;
+
+  sem->count = 0;
+  list_add(&sem->list, &freeSemafor);
+
+  return 0;
 }

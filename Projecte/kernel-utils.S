@@ -8,22 +8,6 @@ ENTRY(switch_stack)
 	popl %ebp
 	ret
 
-/* void task_switch(union task_union *new) */
-ENTRY(task_switch)
-	pushl %ebp
-	movl %esp, %ebp
-	pushl %esi
-	pushl %edi
-	pushl %ebx
-	pushl 8(%ebp)
-	call inner_task_switch
-	addl $4, %esp
-	popl %ebx
-	popl %edi
-	popl %esi
-	popl %ebp
-	ret
-
 /* void thread_switch(union thread_union *new) */
 ENTRY(thread_switch)
 	pushl %ebp
@@ -61,4 +45,3 @@ ENTRY(setMSR)
 	wrmsr
 	pop %ebp
 	ret
-

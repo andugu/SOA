@@ -100,15 +100,15 @@ ENTRY(get_stats)
 	popl %ebp
 	ret
 
-/* int pthread_create(pthread_t *thread, void *(*start_routine) (void *), void *arg) */
+/* int pthread_create(pthread_t *id, unsigned int* start_routine, void *arg) */
 ENTRY(pthread_create)
 	pushl %ebp
 	movl %esp, %ebp
 	pushl %ebx;  // Save EBX, ESI and EDI if modified
 	movl $26, %eax
-	movl 0x8(%ebp), %ebx;	// thread
-	movl 0xC(%ebp), %ecx;	// *start_routine
-	movl 0x10(%ebp), %edx;	// *arg
+	movl 0x8(%ebp), %ebx;	//*id
+	movl 0xC(%ebp), %ecx;	//*start_routine
+	movl 0x10(%ebp), %edx;	//*arg
 	call syscall_sysenter
 	popl %ebx
 	test %eax, %eax
@@ -116,13 +116,13 @@ ENTRY(pthread_create)
 	popl %ebp
 	ret
 
-/* void pthread_exit(void *retval) */
+/* void pthread_exit(int *retval) */
 ENTRY(pthread_exit)
 	pushl %ebp
 	movl %esp, %ebp
 	pushl %ebx;  // Save EBX, ESI and EDI if modified
 	movl $27, %eax
-	movl 0x8(%ebp), %ebx;	// *retval
+	movl 0x8(%ebp), %ebx;	//*retval
 	call syscall_sysenter
 	popl %ebx
 	test %eax, %eax
@@ -130,14 +130,71 @@ ENTRY(pthread_exit)
 	popl %ebp
 	ret
 
-/* int pthread_join(pthread_t thread, void **retval) */
+/* int pthread_join(pthread_t id, int *retval) */
 ENTRY(pthread_join)
 	pushl %ebp
 	movl %esp, %ebp
 	pushl %ebx;  // Save EBX, ESI and EDI if modified
 	movl $28, %eax
-	movl 0x8(%ebp), %ebx;	// thread
-	movl 0xC(%ebp), %ecx;	// *retval
+	movl 0x8(%ebp), %ebx;	//id
+	movl 0xC(%ebp), %ecx;	//*retval
+	call syscall_sysenter
+	popl %ebx
+	test %eax, %eax
+	js nok	// if (eax < 0) -->
+	popl %ebp
+	ret
+
+/* int sem_init(sem_t* id, unsigned int value); */
+ENTRY(sem_init)
+	pushl %ebp
+	movl %esp, %ebp
+	pushl %ebx;  // Save EBX, ESI and EDI if modified
+	movl $64, %eax
+	movl 0x8(%ebp), %ebx;	//*id
+	movl 0xC(%ebp), %ecx;	//value
+	call syscall_sysenter
+	popl %ebx
+	test %eax, %eax
+	js nok	// if (eax < 0) -> 
+	popl %ebp
+	ret
+
+/* int sem_wait(sem_t id) */
+ENTRY(sem_wait)
+	pushl %ebp
+	movl %esp, %ebp
+	pushl %ebx;  // Save EBX, ESI and EDI if modified
+	movl $65, %eax
+	movl 0x8(%ebp), %ebx;	//id
+	call syscall_sysenter
+	popl %ebx
+	test %eax, %eax
+	js nok	// if (eax < 0) -->
+	popl %ebp
+	ret
+
+/* int sem_post(sem_t id) */
+ENTRY(sem_post)
+	pushl %ebp
+	movl %esp, %ebp
+	pushl %ebx;  // Save EBX, ESI and EDI if modified
+	movl $66, %eax
+	movl 0x8(%ebp), %ebx;	//id
+	call syscall_sysenter
+	popl %ebx
+	test %eax, %eax
+	js nok	// if (eax < 0) -->
+	popl %ebp
+	ret
+
+/* int sem_destroy(sem_t id) */
+ENTRY(sem_destroy)
+	pushl %ebp
+	movl %esp, %ebp
+	pushl %ebx;  // Save EBX, ESI and EDI if modified
+	movl $67, %eax
+	movl 0x8(%ebp), %ebx;	//id
 	call syscall_sysenter
 	popl %ebx
 	test %eax, %eax
