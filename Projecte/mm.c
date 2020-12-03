@@ -137,7 +137,7 @@ void init_mm()
   init_frames();
   init_dir_pages();
   allocate_DIR(&task[0]);
-  set_cr3(get_DIR(&task[0]));
+  set_cr3(get_DIR(&protected_tasks[5]));
   set_pe_flag();
 }
 /***********************************************/
