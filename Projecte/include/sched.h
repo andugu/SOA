@@ -76,7 +76,7 @@ extern struct sem_t semafors[NR_SEMAFORS]; /* Vector de semafors */
 
 #define KERNEL_ESP(t)       	(DWord) &(t)->stack[KERNEL_STACK_SIZE]
 
-#define INITIAL_ESP       	KERNEL_ESP((union thread_union*)(task[1].threads[0]))
+#define INITIAL_ESP       	KERNEL_ESP(&thread[1])
 
 extern struct list_head freequeue;
 extern struct list_head readyqueue;

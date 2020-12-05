@@ -369,6 +369,7 @@ void init_sched()
   init_freeThread();
   init_freeSemafor();
   INIT_LIST_HEAD(&readyqueue);
+  INIT_LIST_HEAD(&blocked);
 }
 
 struct thread_struct* current_thread()
