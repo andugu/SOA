@@ -15,12 +15,11 @@
  * Container for the Task array and 2 additional pages (the first and the last one)
  * to protect against out of bound accesses.
  */
-struct task_struct protected_tasks[NR_TASKS+2]
-  __attribute__((__section__(".data.task")));
+struct task_struct protected_tasks[NR_TASKS+2];
 struct task_struct *task = &protected_tasks[1]; /* == struct task_struct task[NR_TASKS] */
 
 union thread_union protected_thread[NR_THREADS+2]
-  __attribute__((__section__(".data.thread")));
+  __attribute__((__section__(".data.task")));
 union thread_union *thread = &protected_thread[1]; /* == union thread_union thread[NR_TASKS] */
 
 // Semafors

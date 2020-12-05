@@ -121,7 +121,7 @@ void set_cr3(page_table_entry * dir)
 })
 #define write_cr0(x) \
          __asm__("movl %0,%%cr0": :"r" (x));
-         
+
 /* Enable paging, modifying the CR0 register */
 void set_pe_flag()
 {
@@ -136,7 +136,7 @@ void init_mm()
   init_table_pages();
   init_frames();
   init_dir_pages();
-  allocate_DIR(&task[0]);
+  allocate_DIR(&protected_tasks[5]);
   set_cr3(get_DIR(&protected_tasks[5]));
   set_pe_flag();
 }
