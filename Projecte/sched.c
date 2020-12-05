@@ -493,3 +493,11 @@ int link_process_with_thread(struct task_struct* pro, struct thread_struct* thr)
 	thr->Dad = pro;
 	return 0;
 }
+
+int num_threads(struct task_struct* pro) {
+  int n = 10;
+  for (int i=0; i < NR_THREADS; i++) {
+     if (pro->threads[i]->TID == -1) --n;
+  }
+  return n;
+}
