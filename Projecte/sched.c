@@ -301,6 +301,7 @@ void init_task1(void)
   struct thread_struct *thr = list_head_to_thread_struct(th);
   union thread_union *uc = (union thread_union*)thr;
   link_process_with_thread(c, thr);
+  list_del(&(thr->list));
 
   thr->TID = 1;
   thr->total_quantum = DEFAULT_QUANTUM_THREAD;
@@ -484,14 +485,14 @@ int link_process_with_thread(struct task_struct* pro, struct thread_struct* thr)
   int pos = -1;
   for (int i=0; i < NR_THREADS; i++) {
     if (pro->threads[i] != NULL && pro->threads[i]->TID == thr->TID) return -2;
-    if (pos == -1 && pro->threads[i] != NULL && pro->threads[i]->TID == -1) pos = i;
-	}
-	if (pos < 0) return pos;
-	
-	pro->threads[pos] = thr;
-	list_add_tail(&(thr->list), &(pro->readyThreads));
-	thr->Dad = pro;
-	return 0;
+    if (pos == -1 && (pro->threads[i] == NULL || pro->threads[i]->TID == -1)) pos = i;
+  }
+  if (pos < 0) return pos;
+
+  pro->threads[pos] = thr;
+  list_add_tail(&(thr->list), &(pro->readyThreads));
+  thr->Dad = pro;
+  return 0;
 }
 
 int num_threads(struct task_struct* pro) {
