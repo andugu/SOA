@@ -31,12 +31,12 @@ int check_fd(int fd, int permissions)
 
 void user_to_system(void)
 {
-  update_stats(&(current()->p_stats.user_ticks), &(current()->p_stats.elapsed_total_ticks));
+  //update_stats(&(current()->p_stats.user_ticks), &(current()->p_stats.elapsed_total_ticks));
 }
 
 void system_to_user(void)
 {
-  update_stats(&(current()->p_stats.system_ticks), &(current()->p_stats.elapsed_total_ticks));
+  //update_stats(&(current()->p_stats.system_ticks), &(current()->p_stats.elapsed_total_ticks));
 }
 
 int sys_ni_syscall()

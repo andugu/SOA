@@ -18,9 +18,9 @@
 struct task_struct protected_tasks[NR_TASKS+2];
 struct task_struct *task = &protected_tasks[1]; /* == struct task_struct task[NR_TASKS] */
 
-union thread_union protected_thread[NR_THREADS+2]
+union thread_union protected_thread[NR_THREADS]
   __attribute__((__section__(".data.task")));
-union thread_union *thread = &protected_thread[1]; /* == union thread_union thread[NR_TASKS] */
+union thread_union *thread = &protected_thread[0]; /* == union thread_union thread[NR_TASKS] */
 
 // Semafors
 struct sem_t semafors[NR_SEMAFORS];
@@ -483,8 +483,8 @@ int link_process_with_thread(struct task_struct* pro, struct thread_struct* thr)
 {
   int pos = -1;
   for (int i=0; i < NR_THREADS; i++) {
-    if (pro->threads[i]->TID == thr->TID) return -2;
-    if (pos == -1 && pro->threads[i]->TID == -1) pos = i;
+    if (pro->threads[i] != NULL && pro->threads[i]->TID == thr->TID) return -2;
+    if (pos == -1 && pro->threads[i] != NULL && pro->threads[i]->TID == -1) pos = i;
 	}
 	if (pos < 0) return pos;
 	

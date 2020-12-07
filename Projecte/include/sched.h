@@ -48,12 +48,6 @@ union thread_union {
   unsigned long stack[KERNEL_STACK_SIZE];      /* Thread System Stack */
 };
 
-/* TODO: Remove when full transition completed */
-union task_union {
-  struct task_struct task;
-  unsigned long stack[KERNEL_STACK_SIZE];
-};
-
 struct sem_t {
 	int id;                                    /* Semafor ID */
 	int count;                                 /* Blocked counter */
@@ -61,11 +55,10 @@ struct sem_t {
 	struct list_head blocked;                  /* Threads blocked by semafor */
 };
 
-
 extern struct task_struct protected_tasks[NR_TASKS+2];
 extern struct task_struct *task; /* Vector de tasques */
 
-extern union thread_union protected_thread[NR_THREADS+2];
+extern union thread_union protected_thread[NR_THREADS];
 extern union thread_union *thread; /* Vector de threads */
 
 extern struct task_struct *idle_task;
