@@ -301,12 +301,11 @@ void init_task1(void)
   struct thread_struct *thr = list_head_to_thread_struct(th);
   union thread_union *uc = (union thread_union*)thr;
   link_process_with_thread(c, thr);
-  list_del(&(thr->list));
+  list_del(&(thr->list)); // Perquè thread ini no estigui dins cua de thread_ready de procés ini
 
   thr->TID = 1;
   thr->total_quantum = DEFAULT_QUANTUM_THREAD;
   thr->state = ST_RUN;
-  /* TODO: User Stack */
 
   c->PID=1;
   c->total_quantum=DEFAULT_QUANTUM;

@@ -75,7 +75,6 @@ int sys_fork(void)
   
   /* Copy the parent's thread union to child's */
   copy_data(current_thread(), uchild, sizeof(union thread_union));
-  int num_threads(struct task_struct* pro);
   /* new pages dir */
   allocate_DIR(lh);
   
@@ -280,25 +279,36 @@ int sys_pthread_create(int *id, unsigned int* start_routine, void *arg)
   struct thread_struct *thr = (struct thread_struct*)list_head_to_thread_struct(lhcurrent);
   union thread_union *thr_u = (union thread_union*)list_head_to_thread_struct(lhcurrent);
 
-  if (link_process_with_thread(current(), thr) < 0) return -ENOMEM;
-  /* link_process_with_thread already adds thr to readyThreads */
-
-  /* TODO: Add values to regs? */
-
-  /* Redirect exec to @start_routine */
-  /* Return address */
-  thr_u->stack[KERNEL_STACK_SIZE-1]=(unsigned long)start_routine;
-  /* Register %ebp */
-  thr_u->stack[KERNEL_STACK_SIZE-2]=0;
-  /* Top of the stack */
-  thr->kernel_esp=(int)&(thr_u->stack[KERNEL_STACK_SIZE-2]);
+  /* Copy the other thread's system stack */
+  copy_data(current_thread(), thr_u, sizeof(union thread_union));
   
-  /* TODO: User Stack? */
-
   thr->TID=++global_TID;
   *id = thr->TID;
 
-	return 0;
+  if (link_process_with_thread(current(), thr) < 0) return -ENOMEM;
+  /* link_process_with_thread already adds thr to readyThreads */
+
+  /* New logical page for the user stack */
+  page_table_entry *process_PT = get_PT(current());
+  int new_ph_pag=alloc_frame();
+  int pos = -1;
+  for (int pag=0; pos != -1; pag++) {
+         if (process_PT[PAG_LOG_INIT_DATA+pag].entry == 0) pos = pag; // PAG_LOG_INIT_DATA+pag+NUM_PAG_DATA
+  }
+  thr->Pag_userStack = PAG_LOG_INIT_DATA+pos;
+  set_ss_pag(process_PT, thr->Pag_userStack, new_ph_pag);
+  int new_ebp = (thr->Pag_userStack+1)<<12;
+//  for () QUE FER AMB ARGS??
+
+
+  thr_u->thread.kernel_esp = (unsigned int) &(thr_u->stack[KERNEL_STACK_SIZE - 18]);
+  thr_u->stack[KERNEL_STACK_SIZE-5] = (int)start_routine;  //[%eip] = start_routine;
+
+  thr_u->stack[KERNEL_STACK_SIZE-11] = -1;  //[%ebp] = ;
+  thr_u->stack[KERNEL_STACK_SIZE-2] = -1;  //[%esp] = ;
+
+
+  return 0;
 }
 
 void sys_pthread_exit(int *retval)

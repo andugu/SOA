@@ -37,9 +37,8 @@ struct thread_struct {
 	struct list_head list;                     /* Thread struct enqueuing */
 	enum state_t state;                        /* State of the thread */
 	struct stats t_stats;                      /* Thread stats */
-    unsigned int kernel_esp;                   /* Thread kernel %esp reg */
-	unsigned long userStack;                   /* Pointer to start of User Stack */
-	/* Thread private storage */
+	unsigned int kernel_esp;                   /* Thread kernel %esp reg */
+	unsigned long Pag_userStack;               /* Page number where the user stack is located */
 	int errno;
 };
 
