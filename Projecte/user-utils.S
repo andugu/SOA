@@ -14,6 +14,15 @@ ENTRY(SYSENTER_RETURN)
 	pop %ecx
 	ret
 
+/* int errno(); */
+ENTRY(errno)
+	pushl %ebp
+	movl %esp, %ebp
+	movl $45, %eax
+	call syscall_sysenter
+	popl %ebp
+	ret
+
 /* int write(int fd, char *buffer, int size) */
 ENTRY(write)
 	pushl %ebp

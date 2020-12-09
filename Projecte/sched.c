@@ -259,6 +259,7 @@ void init_idle (void)
   list_del(l);
   struct task_struct *c = list_head_to_task_struct(l);
   INIT_LIST_HEAD(&(c->readyThreads));
+  INIT_LIST_HEAD(&(c->notifyAtExit));
   
   struct list_head *th = list_first(&freeThread);
   list_del(th);
@@ -295,23 +296,26 @@ void init_task1(void)
   list_del(l);
   struct task_struct *c = list_head_to_task_struct(l);
   INIT_LIST_HEAD(&(c->readyThreads));
+  INIT_LIST_HEAD(&(c->notifyAtExit));
 
   struct list_head *th = list_first(&freeThread);
   list_del(th);
   struct thread_struct *thr = list_head_to_thread_struct(th);
   union thread_union *uc = (union thread_union*)thr;
   link_process_with_thread(c, thr);
-  list_del(&(thr->list)); // Perquè thread ini no estigui dins cua de thread_ready de procés ini
+  /* link_process_with_thread adds thr by default to readyThreads */
+  list_del(&(thr->list));
 
   thr->TID = 1;
   thr->total_quantum = DEFAULT_QUANTUM_THREAD;
   thr->state = ST_RUN;
+  thr->joinable = 1;
 
-  c->PID=1;
-  c->total_quantum=DEFAULT_QUANTUM;
-  c->state=ST_RUN;
+  c->PID = 1;
+  c->total_quantum = DEFAULT_QUANTUM;
+  c->state = ST_RUN;
 
-  remaining_quantum=c->total_quantum;
+  remaining_quantum = c->total_quantum;
   remaining_thread_quantum = thr->total_quantum;
 
   init_stats(&c->p_stats);
@@ -347,6 +351,7 @@ void init_freeThread()
   for (int i = 0; i < NR_THREADS; i++)
   {
     thread[i].thread.TID=-1;
+    thread[i].thread.joinable=0;
     list_add_tail(&(thread[i].thread.list), &freeThread);
   }
 }
@@ -359,6 +364,7 @@ void init_freeSemafor()
   for (int i = 0; i < NR_SEMAFORS; i++)
   {
     semafors[i].id=i;
+    semafors[i].in_use=0;
     list_add_tail(&(semafors[i].list), &freeSemafor);
   }
 }
@@ -408,7 +414,7 @@ void inner_thread_switch(union thread_union *new)
   tss.esp0=(int)&(new->stack[KERNEL_STACK_SIZE]);
   setMSR(0x175, 0, (unsigned long)&(new->stack[KERNEL_STACK_SIZE]));
 
-  //switch_stack(&current_thread()->kernel_esp, new->thread.kernel_esp);
+  // switch_stack(&current_thread()->kernel_esp, new->thread.kernel_esp);
   current_thread()->kernel_esp = (unsigned long) get_ebp();
   setESP(&(new->thread.kernel_esp));
 }
@@ -494,6 +500,9 @@ int link_process_with_thread(struct task_struct* pro, struct thread_struct* thr)
   return 0;
 }
 
+/* Number of threads in process
+ * Pre: None
+ * Post: Number of threads in pro*/
 int num_threads(struct task_struct* pro) {
   int n = 10;
   for (int i=0; i < NR_THREADS; i++) {

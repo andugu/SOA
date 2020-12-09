@@ -17,7 +17,7 @@
 #define KERNEL_STACK_SIZE   1024
 #define USER_STACK_SIZE	    1024
 
-enum state_t { ST_RUN, ST_READY, ST_BLOCKED };
+enum state_t { ST_RUN, ST_READY, ST_BLOCKED , ST_ZOMBIE};
 
 struct task_struct {
   int PID;                                      /* Process ID. This MUST be the first field of the struct. */
@@ -38,8 +38,12 @@ struct thread_struct {
 	enum state_t state;                        /* State of the thread */
 	struct stats t_stats;                      /* Thread stats */
 	unsigned int kernel_esp;                   /* Thread kernel %esp reg */
-	unsigned long Pag_userStack;               /* Page number where the user stack is located */
-	int errno;
+	unsigned long pag_userStack;               /* Logical page number of User Stack */
+	struct list_head notifyAtExit;			   /* List of threads to wake up on exit */
+	int joinable;							   /* 1 if the thread is joinable, 0 otherwise */ 
+	/* Thread Local Storage */
+	int errno;								   /* Errno value of thread */
+	int result;								   /* Thread return value */
 };
 
 union thread_union {
@@ -50,37 +54,33 @@ union thread_union {
 struct sem_t {
 	int id;                                    /* Semafor ID */
 	int count;                                 /* Blocked counter */
+	int in_use;							   	   /* 1 if in use, 0 otherwise */
 	struct list_head list;                     /* Semafor struct enqueuing */
 	struct list_head blocked;                  /* Threads blocked by semafor */
 };
 
 extern struct task_struct protected_tasks[NR_TASKS+2];
-extern struct task_struct *task; /* Vector de tasques */
+extern struct task_struct *task; /* Tasks vector */
 
 extern union thread_union protected_thread[NR_THREADS];
-extern union thread_union *thread; /* Vector de threads */
+extern union thread_union *thread; /* Threads vector */
 
 extern struct task_struct *idle_task;
 extern struct thread_struct *idle_thread;
 
-extern struct sem_t semafors[NR_SEMAFORS]; /* Vector de semafors */
+extern struct sem_t semafors[NR_SEMAFORS]; /* Semafors vector */
 
 
-#define KERNEL_ESP(t)       	(DWord) &(t)->stack[KERNEL_STACK_SIZE]
+#define KERNEL_ESP(t)	(DWord) &(t)->stack[KERNEL_STACK_SIZE]
 
-#define INITIAL_ESP       	KERNEL_ESP(&thread[1])
+#define INITIAL_ESP		KERNEL_ESP(&thread[1])
 
 extern struct list_head freequeue;
 extern struct list_head readyqueue;
-
 extern struct list_head freeThread;
-
 extern struct list_head freeSemafor;
 
-
-/* Inicialitza les dades del proces inicial */
 void init_task1(void);
-
 void init_idle(void);
 
 void init_sched(void);

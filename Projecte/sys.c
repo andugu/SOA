@@ -44,6 +44,11 @@ int sys_ni_syscall()
 	return -ENOSYS; 
 }
 
+int sys_errno()
+{
+  return current_thread()->errno;
+}
+
 int sys_getpid()
 {
 	return current()->PID;
@@ -133,7 +138,7 @@ int sys_fork(void)
   link_process_with_thread(lh, &(uchild->thread)); // NO possible error
 
 
-/*  int register_ebp;		// frame pointer
+  /*  int register_ebp;		// frame pointer
   // Map Parent's ebp to child's stack
   register_ebp = (int) get_ebp();
   register_ebp=(register_ebp - (int)current()) + (int)(uchild);
@@ -147,7 +152,7 @@ int sys_fork(void)
   uchild->task.register_esp-=sizeof(DWord);
   *(DWord*)(uchild->task.register_esp)=temp_ebp;
 
-*/
+  */
   uchild->stack[KERNEL_STACK_SIZE - 19] = 0;
   // Child's kernel_esp points to fake ebp
   uchild->thread.kernel_esp = (unsigned int) &(uchild->stack[KERNEL_STACK_SIZE - 19]);
@@ -156,7 +161,7 @@ int sys_fork(void)
 
   /* Set stats to 0 */
   init_stats(&(uchild->thread.t_stats));
-// 		TASK STATS????
+  // 		TASK STATS????
 
   /* Queue child process into readyqueue */
   uchild->thread.state=ST_READY;
@@ -219,7 +224,7 @@ void sys_exit()
     }
   }
 
-// TODO: Free the thread's stack frame????
+  // TODO: Free the thread's stack frame????
 
   page_table_entry *process_PT = get_PT(current());
   // Deallocate all the propietary physical pages
@@ -264,8 +269,6 @@ int sys_get_stats(int pid, struct stats *st)
   return -ESRCH; /*ESRCH */
 }
 
-int num_threads(struct task_struct* pro);
-
 int sys_pthread_create(int *id, unsigned int* start_routine, void *arg)
 {
   struct list_head *lhcurrent = NULL;
@@ -279,45 +282,98 @@ int sys_pthread_create(int *id, unsigned int* start_routine, void *arg)
   struct thread_struct *thr = (struct thread_struct*)list_head_to_thread_struct(lhcurrent);
   union thread_union *thr_u = (union thread_union*)list_head_to_thread_struct(lhcurrent);
 
-  /* Copy the other thread's system stack */
+  /* Copy thread_union from caller */
   copy_data(current_thread(), thr_u, sizeof(union thread_union));
   
+  /* Update thread_union with new values */
   thr->TID=++global_TID;
   *id = thr->TID;
+  thr->state = ST_READY;
+  init_stats(&thr->t_stats);
+  /* TODO: crash? */
+  INIT_LIST_HEAD(&(thr->notifyAtExit));
 
   if (link_process_with_thread(current(), thr) < 0) return -ENOMEM;
   /* link_process_with_thread already adds thr to readyThreads */
 
-  /* New logical page for the user stack */
+  /* Allocate User Stack in memory */
   page_table_entry *process_PT = get_PT(current());
-  int new_ph_pag=alloc_frame();
+  /* Find free logical pag */
   int pos = -1;
-  for (int pag=0; pos != -1; pag++) {
-         if (process_PT[PAG_LOG_INIT_DATA+pag].entry == 0) pos = pag; // PAG_LOG_INIT_DATA+pag+NUM_PAG_DATA
-  }
-  thr->Pag_userStack = PAG_LOG_INIT_DATA+pos;
-  set_ss_pag(process_PT, thr->Pag_userStack, new_ph_pag);
-  int new_ebp = (thr->Pag_userStack+1)<<12;
-//  for () QUE FER AMB ARGS??
+  for (int pag = 0; pos != -1 && pos < TOTAL_PAGES-PAG_LOG_INIT_DATA; pag++)
+    if (process_PT[PAG_LOG_INIT_DATA+pag].entry == 0) pos = pag;
+  thr->pag_userStack = PAG_LOG_INIT_DATA+pos;
+  /* Find free physical pag */
+  int new_ph_pag = alloc_frame();
+  /* Bind pages together */
+  set_ss_pag(process_PT, thr->pag_userStack, new_ph_pag);
 
-
-  thr_u->thread.kernel_esp = (unsigned int) &(thr_u->stack[KERNEL_STACK_SIZE - 18]);
-  thr_u->stack[KERNEL_STACK_SIZE-5] = (int)start_routine;  //[%eip] = start_routine;
-
-  thr_u->stack[KERNEL_STACK_SIZE-11] = -1;  //[%ebp] = ;
-  thr_u->stack[KERNEL_STACK_SIZE-2] = -1;  //[%esp] = ;
-
+  /* TODO: Build up User Stack */
+  // int new_ebp = (thr->Pag_userStack+1)<<12;
+  // TODO: args?
+  thr->kernel_esp = (unsigned int) &(thr_u->stack[KERNEL_STACK_SIZE - 18]);
+  /* %eip */
+  thr_u->stack[KERNEL_STACK_SIZE-5] = (int)start_routine;
+  /* %ebp */
+  thr_u->stack[KERNEL_STACK_SIZE-11] = -1;
+  /* %esp */
+  thr_u->stack[KERNEL_STACK_SIZE-2] = -1;
 
   return 0;
 }
 
+/* The pthread_exit() function terminates the calling thread and returns
+  a value via retval that (if the thread is joinable) is available to
+  another thread in the same process that calls pthread_join(3).
+
+  Performing a return from the start function of any thread other than
+  the main thread results in an implicit call to pthread_exit(), using
+  the function's return value as the thread's exit status.
+
+  After the last thread in a process terminates, the process terminates
+  as by calling exit(3) with an exit status of zero; thus, process-
+  shared resources are released and functions registered using
+  atexit(3) are called. */
 void sys_pthread_exit(int *retval)
 {
+
+  current_thread()->state = ST_ZOMBIE;
+  *retval = current_thread()->result;
+
+  if (num_threads(current()) == 0)
+  {
+    current_thread()->TID = -1;
+    list_add_tail(current_thread()->list, &freeThread);
+    exit();
+  }
+
 	return;
 }
 
 int sys_pthread_join(int id, int *retval)
 {
+  /* Check if thread(id) exists */
+  struct thread_struct *thr = NULL;
+  for (int i = 0; i < NR_THREADS; ++i)
+    if (current()->threads[i]->TID == id) thr = &threads[i];
+  if (thr == NULL) return -ESRCH;
+
+  /* Check if joining self */
+  if (thr == current_thread()) return -ESRCH;
+
+  /* Check if thread(id) is joinable */
+  if (thr->joinable == 0) return -EINVAL;
+  else thr->joinable = 0;
+
+  if (thr->state != ST_ZOMBIE)
+    /* Block caller thread while finishing */
+    force_thread_switch_to_blocked(&thr->notifyAtExit);
+  else
+  {
+    if (retval != NULL)
+      *retval = thr->result;
+  }
+
 	return 0;
 }
 
@@ -338,7 +394,9 @@ int sys_sem_init(int* id, unsigned int value)
 
   *id = sem->id;
   sem->count = value;
-  INIT_LIST_HEAD(&(sem->blocked)); // Jo crec que això donaria error pq. si fem exit de un semàfor però després el tornem a inicialitzar, fariem init_list_head de llista ja inicialitzada
+  sem->in_use = 1;
+  /* TODO: Crash? */
+  INIT_LIST_HEAD(&(sem->blocked));
 
   return 0;
 }
@@ -349,6 +407,9 @@ int sys_sem_wait(int id)
   if (id < 0 || id >= NR_SEMAFORS) return -EINVAL;
 
   struct sem_t *sem = &semafors[id];
+
+  /* Uninited semafor */
+  if (sem->in_use == 0) return -EINVAL;
 
   sem->count--;
   if (sem->count < 0)
@@ -364,6 +425,9 @@ int sys_sem_post(int id)
   if (id < 0 || id >= NR_SEMAFORS) return -EINVAL;
 
   struct sem_t *sem = &semafors[id];
+
+  /* Uninited semafor */
+  if (sem->in_use == 0) return -EINVAL;
 
   sem->count++;
   if (sem->count <= 0)
@@ -393,10 +457,14 @@ int sys_sem_destroy(int id)
 
   struct sem_t *sem = &semafors[id];
 
+  /* Uninited semafor */
+  if (sem->in_use == 0) return -EINVAL;
+
   /* Semafor still in use */
   if (!list_empty(&sem->blocked)) return -EINVAL;
 
   sem->count = 0;
+  sem->in_use = 0;
   list_add(&sem->list, &freeSemafor);
 
   return 0;
