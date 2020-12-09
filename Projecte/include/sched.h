@@ -28,22 +28,22 @@ struct task_struct {
   int total_quantum;                            /* Total quantum of the process */
   struct list_head readyThreads;                /* List of threads of process ready to exec */
   struct thread_struct* threads[NR_THREADS];    /* Pointers to threads of the process */
+  struct list_head notifyAtExit;		/* List of threads to wake up on exit */
 };
 
 struct thread_struct {
-	int TID;                                   /* Thread ID */
-	struct task_struct *Dad;                   /* Pointer to Dad's task_struct */
-	int total_quantum;                         /* Total quantum of the thread */
-	struct list_head list;                     /* Thread struct enqueuing */
-	enum state_t state;                        /* State of the thread */
-	struct stats t_stats;                      /* Thread stats */
-	unsigned int kernel_esp;                   /* Thread kernel %esp reg */
-	unsigned long pag_userStack;               /* Logical page number of User Stack */
-	struct list_head notifyAtExit;			   /* List of threads to wake up on exit */
-	int joinable;							   /* 1 if the thread is joinable, 0 otherwise */ 
-	/* Thread Local Storage */
-	int errno;								   /* Errno value of thread */
-	int result;								   /* Thread return value */
+  int TID;                                   /* Thread ID */
+  struct task_struct *Dad;                   /* Pointer to Dad's task_struct */
+  int total_quantum;                         /* Total quantum of the thread */
+  struct list_head list;                     /* Thread struct enqueuing */
+  enum state_t state;                        /* State of the thread */
+  struct stats t_stats;                      /* Thread stats */
+  unsigned int kernel_esp;                   /* Thread kernel %esp reg */
+  unsigned long pag_userStack;               /* Logical page number of User Stack */
+  int joinable;					/* 1 if the thread is joinable, 0 otherwise */ 
+  /* Thread Local Storage */
+  int errno;					/* Errno value of thread */
+  int result;					/* Thread return value */
 };
 
 union thread_union {

@@ -127,7 +127,7 @@ void update_process_state_rr(struct task_struct *t, struct list_head *dst_queue)
   }
 
   /* TODO: why? */
-  // update_thread_state_rr(current_thread(), &(current()->readyThreads));
+  update_thread_state_rr(current_thread(), &(current()->readyThreads));
 }
 
 void update_thread_state_rr(struct thread_struct *t, struct list_head *dst_queue)
@@ -139,7 +139,7 @@ void update_thread_state_rr(struct thread_struct *t, struct list_head *dst_queue
     if (dst_queue!=&(current()->readyThreads)) t->state=ST_BLOCKED;
     else
     {
-      update_stats(&(t->t_stats.system_ticks), &(t->t_stats.elapsed_total_ticks));
+      //update_stats(&(t->t_stats.system_ticks), &(t->t_stats.elapsed_total_ticks));
       t->state=ST_READY;
     }
   }
@@ -162,12 +162,11 @@ void sched_next_rr(void)
   remaining_quantum=t->total_quantum;
 
   update_stats(&(current()->p_stats.system_ticks), &(current()->p_stats.elapsed_total_ticks));
-  update_stats(&(t->p_stats.ready_ticks), &(t->p_stats.elapsed_total_ticks));
+  //update_stats(&(t->p_stats.ready_ticks), &(t->p_stats.elapsed_total_ticks));
   t->p_stats.total_trans++;
 
   sched_next_thread_of_proc(t);
 
-  set_cr3(current()->dir_pages_baseAddr);
 }
 
 void sched_next_thread(void)
@@ -180,22 +179,24 @@ void sched_next_thread(void)
     e = list_first(&(current()->readyThreads));
     list_del(e);
     t = list_head_to_thread_struct(e);
-  }
+  } else t=idle_thread;
 
+/*
   else
   {
     if (!check_current_threads_blocked())
-      /* If a process has no unblocked threads left */
+      // If a process has no unblocked threads left
       force_task_switch_to_blocked();
     else
-      /* No threads to run but not blocked */
+      // No threads to run but not blocked
       force_task_switch();
-  }
+  } 
+*/
 
   t->state=ST_RUN;
   remaining_thread_quantum=t->total_quantum;
 
-  update_stats(&(current_thread()->t_stats.system_ticks), &(current_thread()->t_stats.elapsed_total_ticks));
+  //update_stats(&(current_thread()->t_stats.system_ticks), &(current_thread()->t_stats.elapsed_total_ticks));
   update_stats(&(t->t_stats.ready_ticks), &(t->t_stats.elapsed_total_ticks));
   t->t_stats.total_trans++;
 
@@ -212,24 +213,27 @@ void sched_next_thread_of_proc(struct task_struct* c)
     e = list_first(&(c->readyThreads));
     list_del(e);
     t=list_head_to_thread_struct(e);
-  }
+  } else t = idle_thread;
 
+/*
   else
   {
     if (!check_current_threads_blocked())
-      /* If a process has no unblocked threads left */
+      // If a process has no unblocked threads left
       force_task_switch_to_blocked();
     else
-      /* No threads to run but not blocked */
+      // No threads to run but not blocked
       force_task_switch();
-  }
+  }*/
 
   t->state=ST_RUN;
   remaining_thread_quantum=t->total_quantum;
 
-  update_stats(&(current_thread()->t_stats.system_ticks), &(current_thread()->t_stats.elapsed_total_ticks));
+  //update_stats(&(current_thread()->t_stats.system_ticks), &(current_thread()->t_stats.elapsed_total_ticks));
   update_stats(&(t->t_stats.ready_ticks), &(t->t_stats.elapsed_total_ticks));
   t->t_stats.total_trans++;
+
+  //list_add_tail(&(current_thread()->list), &(current()->readyThreads));
 
   thread_switch((union thread_union*)t);
 }
@@ -244,7 +248,7 @@ void schedule()
     sched_next_rr();
   }
   /* Thread Level Scheduling */
-  if (needs_sched_thread())
+  else if (needs_sched_thread())
   {
     update_thread_state_rr(current_thread(), &(current()->readyThreads));
     sched_next_thread();
@@ -414,9 +418,12 @@ void inner_thread_switch(union thread_union *new)
   tss.esp0=(int)&(new->stack[KERNEL_STACK_SIZE]);
   setMSR(0x175, 0, (unsigned long)&(new->stack[KERNEL_STACK_SIZE]));
 
-  // switch_stack(&current_thread()->kernel_esp, new->thread.kernel_esp);
-  current_thread()->kernel_esp = (unsigned long) get_ebp();
-  setESP(&(new->thread.kernel_esp));
+  set_cr3(get_DIR(new->thread.Dad));
+
+  switch_stack(&current_thread()->kernel_esp, new->thread.kernel_esp);
+  //switch_stack(&current()->register_esp, new->task.register_esp);
+  //current_thread()->kernel_esp = (unsigned long) get_ebp();
+  //setESP(&(new->thread.kernel_esp));
 }
 
 /* Checks if current process has unblocked threads 
@@ -445,7 +452,7 @@ int check_blocked_threads(struct task_struct *t)
   int ret = 0;
 
   for (int i = 0; i < NR_THREADS; ++i)
-    if (t->threads[i]->state != ST_BLOCKED)
+    if (t->threads[i] != NULL && t->threads[i]->state != ST_BLOCKED)
       ret = 1;
 
   return ret;
@@ -493,7 +500,6 @@ int link_process_with_thread(struct task_struct* pro, struct thread_struct* thr)
     if (pos == -1 && (pro->threads[i] == NULL || pro->threads[i]->TID == -1)) pos = i;
   }
   if (pos < 0) return pos;
-
   pro->threads[pos] = thr;
   list_add_tail(&(thr->list), &(pro->readyThreads));
   thr->Dad = pro;
@@ -506,7 +512,7 @@ int link_process_with_thread(struct task_struct* pro, struct thread_struct* thr)
 int num_threads(struct task_struct* pro) {
   int n = 10;
   for (int i=0; i < NR_THREADS; i++) {
-     if (pro->threads[i]->TID == -1) --n;
+     if (pro->threads[i] == NULL || pro->threads[i]->TID == -1) --n;
   }
   return n;
 }

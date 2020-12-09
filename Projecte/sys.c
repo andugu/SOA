@@ -80,6 +80,9 @@ int sys_fork(void)
   
   /* Copy the parent's thread union to child's */
   copy_data(current_thread(), uchild, sizeof(union thread_union));
+
+  lh->total_quantum = current()->total_quantum; // Ja no es fa al copy_data perquè total quantum de procés no està a thread_union
+
   /* new pages dir */
   allocate_DIR(lh);
   
@@ -135,6 +138,7 @@ int sys_fork(void)
   lh->PID=++global_PID;
   lh->state=ST_READY;
   uchild->thread.TID = ++global_TID;
+  INIT_LIST_HEAD(&(lh->readyThreads));
   link_process_with_thread(lh, &(uchild->thread)); // NO possible error
 
 
@@ -167,7 +171,7 @@ int sys_fork(void)
   uchild->thread.state=ST_READY;
   lh->state = ST_READY;
   list_add_tail(&(lh->list), &readyqueue);
-  list_add_tail(&(uchild->thread.list), &(lh->readyThreads));
+  //list_add_tail(&(uchild->thread.list), &(lh->readyThreads)); JA ES FA A LINK_PROCESS_WITH_THREAD
   
   return lh->PID;
 }
@@ -291,7 +295,7 @@ int sys_pthread_create(int *id, unsigned int* start_routine, void *arg)
   thr->state = ST_READY;
   init_stats(&thr->t_stats);
   /* TODO: crash? */
-  INIT_LIST_HEAD(&(thr->notifyAtExit));
+  //INIT_LIST_HEAD(&(thr->notifyAtExit));
 
   if (link_process_with_thread(current(), thr) < 0) return -ENOMEM;
   /* link_process_with_thread already adds thr to readyThreads */
@@ -343,11 +347,12 @@ void sys_pthread_exit(int *retval)
   if (num_threads(current()) == 0)
   {
     current_thread()->TID = -1;
-    list_add_tail(current_thread()->list, &freeThread);
-    exit();
+// list_del ??
+    list_add_tail(&(current_thread()->list), &freeThread);
+    sys_exit();
   }
 
-	return;
+  return;
 }
 
 int sys_pthread_join(int id, int *retval)
@@ -355,7 +360,7 @@ int sys_pthread_join(int id, int *retval)
   /* Check if thread(id) exists */
   struct thread_struct *thr = NULL;
   for (int i = 0; i < NR_THREADS; ++i)
-    if (current()->threads[i]->TID == id) thr = &threads[i];
+    if (current()->threads[i] != NULL && current()->threads[i]->TID == id) thr = current()->threads[i];
   if (thr == NULL) return -ESRCH;
 
   /* Check if joining self */
@@ -367,7 +372,7 @@ int sys_pthread_join(int id, int *retval)
 
   if (thr->state != ST_ZOMBIE)
     /* Block caller thread while finishing */
-    force_thread_switch_to_blocked(&thr->notifyAtExit);
+    force_thread_switch_to_blocked(&(current()->notifyAtExit));
   else
   {
     if (retval != NULL)
