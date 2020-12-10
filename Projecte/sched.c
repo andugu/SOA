@@ -166,7 +166,6 @@ void sched_next_rr(void)
   t->p_stats.total_trans++;
 
   sched_next_thread_of_proc(t);
-
 }
 
 void sched_next_thread(void)
@@ -233,9 +232,11 @@ void sched_next_thread_of_proc(struct task_struct* c)
   update_stats(&(t->t_stats.ready_ticks), &(t->t_stats.elapsed_total_ticks));
   t->t_stats.total_trans++;
 
-  //list_add_tail(&(current_thread()->list), &(current()->readyThreads));
-
-  thread_switch((union thread_union*)t);
+  if (t != current_thread()) {
+// In force_task_switch, a thread could thread_switch with itself
+    set_cr3(get_DIR(t->Dad));
+    thread_switch((union thread_union*)t);
+  }
 }
 
 void schedule()
@@ -408,9 +409,6 @@ struct sem_t* list_head_to_sem_t(struct list_head *l)
   return list_entry(l, struct sem_t, list);
 }
 
-void * get_ebp(void);
-void setESP(void * new_sp);
-
 /* Do the magic of a thread switch */
 void inner_thread_switch(union thread_union *new)
 {
@@ -418,9 +416,7 @@ void inner_thread_switch(union thread_union *new)
   tss.esp0=(int)&(new->stack[KERNEL_STACK_SIZE]);
   setMSR(0x175, 0, (unsigned long)&(new->stack[KERNEL_STACK_SIZE]));
 
-  set_cr3(get_DIR(new->thread.Dad));
-
-  switch_stack(&current_thread()->kernel_esp, new->thread.kernel_esp);
+  switch_stack((int*)(&current_thread()->kernel_esp), new->thread.kernel_esp);
 }
 
 /* Checks if current process has unblocked threads 
@@ -433,7 +429,7 @@ int check_current_threads_blocked()
   int ret = 0;
 
   for (int i = 0; i < NR_THREADS; ++i)
-    if (current()->threads[i]->state != ST_BLOCKED)
+    if (current()->threads[i] != NULL && current()->threads[i]->state != ST_BLOCKED)
       ret = 1;
 
   return ret;

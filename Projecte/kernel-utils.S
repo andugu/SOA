@@ -24,17 +24,6 @@ ENTRY(thread_switch)
 	popl %ebp
 	ret
 
-/* void * get_ebp(void) */
-ENTRY(get_ebp)
-	mov %ebp, %eax
-	ret
-
-/* void setESP(void * new_sp) */
-ENTRY(setESP)
-	movl 4(%esp), %esp
-	popl %ebp
-	ret
-
 /* void setMSR(unsigned long msr_number, unsigned long high, unsigned long low)*/
 ENTRY(setMSR)
 	push %ebp

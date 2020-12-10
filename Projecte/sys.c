@@ -218,7 +218,7 @@ void sys_exit()
 
   // free all remaining threads -> millor for del vector que anar fent sys_pthread_exit perquè així ens assegurem que un thread bloquejat per semàfor no evita ser alliberat
   for (i = 0; i < NR_THREADS; i++) {
-    if (current()->threads[i]->TID != -1) {
+    if (current()->threads[i] != NULL && current()->threads[i]->TID != -1) {
       if (current()->threads[i]->state != ST_RUN) {
         list_del(&(current()->threads[i]->list));
       }
@@ -272,7 +272,7 @@ int sys_get_stats(int pid, struct stats *st)
   return -ESRCH; /*ESRCH */
 }
 
-int sys_pthread_create(int *id, unsigned int* start_routine, void *arg)
+int sys_pthread_create(int *id, unsigned int* start_routine, void *arg, unsigned int* ret)
 {
   struct list_head *lhcurrent = NULL;
   
@@ -315,10 +315,10 @@ int sys_pthread_create(int *id, unsigned int* start_routine, void *arg)
   /* Build up User Stack */
   /* @pthread_ret <- %esp
      *arg */
-  unsigned int *p = ((thr->pag_userStack+1)<<12)-4;
-  *p = arg;
+  unsigned int *p = (unsigned int*)(((thr->pag_userStack+1)<<12)-4);
+  *p = (int) arg;
   --p;
-  *p = (unsigned int) &pthread_ret;
+  *p = (unsigned int) ret; // THREAD_RET ES DE MODE USUARI!!!!!
 
   /* Build up Kernel Stack */
   /* %ebp       -18
@@ -330,7 +330,7 @@ int sys_pthread_create(int *id, unsigned int* start_routine, void *arg)
   /* %eip */
   thr_u->stack[KERNEL_STACK_SIZE-5] = (unsigned int)start_routine;
   /* %esp */
-  thr_u->stack[KERNEL_STACK_SIZE-2] = p;
+  thr_u->stack[KERNEL_STACK_SIZE-2] = (int)p;
 
   return 0;
 }
@@ -357,6 +357,7 @@ void sys_pthread_exit(int *retval)
   {
     current_thread()->TID = -1;
 // list_del ??
+// alliberar pàgina de stack
     list_add_tail(&(current_thread()->list), &freeThread);
     sys_exit();
   }
@@ -402,7 +403,7 @@ void sys_pthread_ret()
      *arg <- ((pag_userStack+1)<<12)-4 */
 
   /* Store result */
-  unsigned int *p = ((current_thread()->pag_userStack+1)<<12)-4*4;
+  unsigned int *p = (unsigned int*) (((current_thread()->pag_userStack+1)<<12)-4*4);
   current_thread()->result = (unsigned int) *p;
 
   /* Make ST_ZOMBIE and Wake up calls */
