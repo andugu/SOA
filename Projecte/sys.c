@@ -69,14 +69,13 @@ int sys_fork(void)
 
   struct list_head *lhcurrent = list_first(&freequeue);
   list_del(lhcurrent);
+  /* New task_struct */
   struct task_struct *lh = list_head_to_task_struct(lhcurrent);
 
   struct list_head *thr = list_first(&freeThread);
   list_del(thr);
+  /* New thread_union */
   union thread_union *uchild =(union thread_union*)list_head_to_thread_struct(thr);
-
-  // lh => new task (task_struct)
-  // uchild => new thread (thread_union)
   
   /* Copy the parent's thread union to child's */
   copy_data(current_thread(), uchild, sizeof(union thread_union));
@@ -293,9 +292,10 @@ int sys_pthread_create(int *id, unsigned int* start_routine, void *arg)
   thr->TID=++global_TID;
   *id = thr->TID;
   thr->state = ST_READY;
+  thr->joinable = 1;
   init_stats(&thr->t_stats);
   /* TODO: crash? */
-  //INIT_LIST_HEAD(&(thr->notifyAtExit));
+  INIT_LIST_HEAD(&(thr->notifyAtExit));
 
   if (link_process_with_thread(current(), thr) < 0) return -ENOMEM;
   /* link_process_with_thread already adds thr to readyThreads */
@@ -312,16 +312,25 @@ int sys_pthread_create(int *id, unsigned int* start_routine, void *arg)
   /* Bind pages together */
   set_ss_pag(process_PT, thr->pag_userStack, new_ph_pag);
 
-  /* TODO: Build up User Stack */
-  // int new_ebp = (thr->Pag_userStack+1)<<12;
-  // TODO: args?
+  /* Build up User Stack */
+  /* @pthread_ret <- %esp
+     *arg */
+  unsigned int *p = ((thr->pag_userStack+1)<<12)-4;
+  *p = arg;
+  --p;
+  *p = (unsigned int) &pthread_ret;
+
+  /* Build up Kernel Stack */
+  /* %ebp       -18
+     @handler   -17
+     SW Context -6 size 11
+     HW Context 0 size 5 */
+  /* kernel_esp points to top of stack */
   thr->kernel_esp = (unsigned int) &(thr_u->stack[KERNEL_STACK_SIZE - 18]);
   /* %eip */
-  thr_u->stack[KERNEL_STACK_SIZE-5] = (int)start_routine;
-  /* %ebp */
-  thr_u->stack[KERNEL_STACK_SIZE-11] = -1;
+  thr_u->stack[KERNEL_STACK_SIZE-5] = (unsigned int)start_routine;
   /* %esp */
-  thr_u->stack[KERNEL_STACK_SIZE-2] = -1;
+  thr_u->stack[KERNEL_STACK_SIZE-2] = p;
 
   return 0;
 }
@@ -372,7 +381,7 @@ int sys_pthread_join(int id, int *retval)
 
   if (thr->state != ST_ZOMBIE)
     /* Block caller thread while finishing */
-    force_thread_switch_to_blocked(&(current()->notifyAtExit));
+    force_thread_switch_to_blocked(&(thr->notifyAtExit));
   else
   {
     if (retval != NULL)
@@ -380,6 +389,40 @@ int sys_pthread_join(int id, int *retval)
   }
 
 	return 0;
+}
+
+void sys_pthread_ret()
+{
+  /* Called when created thread finishes */
+  /* User Stack is as follow:
+     ...
+     %eax == Thread result
+     %ebx
+     %ebp
+     *arg <- ((pag_userStack+1)<<12)-4 */
+
+  /* Store result */
+  unsigned int *p = ((current_thread()->pag_userStack+1)<<12)-4*4;
+  current_thread()->result = (unsigned int) *p;
+
+  /* Make ST_ZOMBIE and Wake up calls */
+  current_thread()->state = ST_ZOMBIE;
+
+  struct list_head *lhcurrent = NULL;
+  struct thread_struct *thr;
+
+  while (!list_empty(&current_thread()->notifyAtExit))
+  {
+    lhcurrent = list_first(&current_thread()->notifyAtExit);
+
+    thr = (struct thread_struct*)list_head_to_thread_struct(lhcurrent);
+    update_thread_state_rr(thr, &thr->Dad->readyThreads);
+
+    /* TODO: Recall sys_pthread_join? */
+  }
+
+  /* Force scheduling */
+  sched_next_thread();
 }
 
 int sys_sem_init(int* id, unsigned int value)

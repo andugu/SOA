@@ -17,7 +17,7 @@
 #define KERNEL_STACK_SIZE   1024
 #define USER_STACK_SIZE	    1024
 
-enum state_t { ST_RUN, ST_READY, ST_BLOCKED , ST_ZOMBIE};
+enum state_t { ST_RUN, ST_READY, ST_BLOCKED , ST_ZOMBIE };
 
 struct task_struct {
   int PID;                                      /* Process ID. This MUST be the first field of the struct. */
@@ -28,7 +28,6 @@ struct task_struct {
   int total_quantum;                            /* Total quantum of the process */
   struct list_head readyThreads;                /* List of threads of process ready to exec */
   struct thread_struct* threads[NR_THREADS];    /* Pointers to threads of the process */
-  struct list_head notifyAtExit;		/* List of threads to wake up on exit */
 };
 
 struct thread_struct {
@@ -40,21 +39,22 @@ struct thread_struct {
   struct stats t_stats;                      /* Thread stats */
   unsigned int kernel_esp;                   /* Thread kernel %esp reg */
   unsigned long pag_userStack;               /* Logical page number of User Stack */
-  int joinable;					/* 1 if the thread is joinable, 0 otherwise */ 
+  int joinable;                              /* 1 if the thread is joinable, 0 otherwise */
+  struct list_head notifyAtExit;             /* List of threads to wake up on exit */
   /* Thread Local Storage */
-  int errno;					/* Errno value of thread */
-  int result;					/* Thread return value */
+  int errno;                                 /* Errno value of thread */
+  unsigned int result;                       /* Thread return value */
 };
 
 union thread_union {
   struct thread_struct thread;
-  unsigned long stack[KERNEL_STACK_SIZE];      /* Thread System Stack */
+  unsigned long stack[KERNEL_STACK_SIZE];    /* Thread System Stack */
 };
 
 struct sem_t {
 	int id;                                    /* Semafor ID */
 	int count;                                 /* Blocked counter */
-	int in_use;							   	   /* 1 if in use, 0 otherwise */
+	int in_use;                                /* 1 if in use, 0 otherwise */
 	struct list_head list;                     /* Semafor struct enqueuing */
 	struct list_head blocked;                  /* Threads blocked by semafor */
 };

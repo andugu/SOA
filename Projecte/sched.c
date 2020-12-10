@@ -263,7 +263,6 @@ void init_idle (void)
   list_del(l);
   struct task_struct *c = list_head_to_task_struct(l);
   INIT_LIST_HEAD(&(c->readyThreads));
-  INIT_LIST_HEAD(&(c->notifyAtExit));
   
   struct list_head *th = list_first(&freeThread);
   list_del(th);
@@ -273,6 +272,7 @@ void init_idle (void)
 
   thr->TID = 0;
   thr->total_quantum=DEFAULT_QUANTUM_THREAD;
+  INIT_LIST_HEAD(&(thr->notifyAtExit));
 
   c->PID=0;
   c->total_quantum=DEFAULT_QUANTUM;
@@ -300,7 +300,6 @@ void init_task1(void)
   list_del(l);
   struct task_struct *c = list_head_to_task_struct(l);
   INIT_LIST_HEAD(&(c->readyThreads));
-  INIT_LIST_HEAD(&(c->notifyAtExit));
 
   struct list_head *th = list_first(&freeThread);
   list_del(th);
@@ -314,6 +313,7 @@ void init_task1(void)
   thr->total_quantum = DEFAULT_QUANTUM_THREAD;
   thr->state = ST_RUN;
   thr->joinable = 1;
+  INIT_LIST_HEAD(&(thr->notifyAtExit));
 
   c->PID = 1;
   c->total_quantum = DEFAULT_QUANTUM;
@@ -421,9 +421,6 @@ void inner_thread_switch(union thread_union *new)
   set_cr3(get_DIR(new->thread.Dad));
 
   switch_stack(&current_thread()->kernel_esp, new->thread.kernel_esp);
-  //switch_stack(&current()->register_esp, new->task.register_esp);
-  //current_thread()->kernel_esp = (unsigned long) get_ebp();
-  //setESP(&(new->thread.kernel_esp));
 }
 
 /* Checks if current process has unblocked threads 

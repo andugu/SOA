@@ -35,6 +35,8 @@ void pthread_exit(int *retval);
 
 int pthread_join(pthread_t id, int *retval);
 
+void pthread_ret();
+
 int sem_init(sem_t* id, unsigned int value);
 
 int sem_wait(sem_t id);

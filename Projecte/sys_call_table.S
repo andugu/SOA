@@ -31,7 +31,7 @@ ENTRY (sys_call_table)
 	.long sys_pthread_create   //26
 	.long sys_pthread_exit     //27
 	.long sys_pthread_join     //28
-	.long sys_ni_syscall       //29
+	.long sys_pthread_ret      //29
 	.long sys_ni_syscall       //30
 	.long sys_ni_syscall       //31
 	.long sys_ni_syscall       //32

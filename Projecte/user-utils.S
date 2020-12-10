@@ -154,6 +154,21 @@ ENTRY(pthread_join)
 	popl %ebp
 	ret
 
+/* void pthread_ret() */
+ENTRY(pthread_ret)
+	pushl %ebp
+	movl %esp, %ebp
+	pushl %ebx;  // Save EBX, ESI and EDI if modified
+	pushl %eax;	 // Stores thread result
+	movl $29, %eax
+	call syscall_sysenter
+	popl %ebx;   // Removes %eax
+	popl %ebx
+	test %eax, %eax
+	js nok	// if (eax < 0) -->
+	popl %ebp
+	ret
+
 /* int sem_init(sem_t* id, unsigned int value); */
 ENTRY(sem_init)
 	pushl %ebp
