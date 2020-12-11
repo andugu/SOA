@@ -1,26 +1,11 @@
 #include <libc.h>
 
 char buff[24];
-
-int pid;
-
 sem_t sem;
 
-void do_nothing (int *val) {
-  write(1, "I am the new thread! \n", strlen("I am the new thread! \n"));
-  //itoa(*val, buff);
-  //write(1, buff, strlen(buff));
-  write(1, "\n", strlen("\n"));
-  int i = 5;
-  int* p = &i;
-  sem_post(sem);
-  //pthread_exit(p);
-  write(1, "Error:(\n", strlen("Error:(\n"));
-  return i;
-}
-
-/* Joc de proves 1:  Fork, exit, and process managment fully modified, but tested for 1 thread/process */
-int joc_probes_1() {
+/* Joc de proves 1: Fork(), exit(), and process managment fully modified, but tested for 1 thread/process */
+int joc_proves_1()
+{
   int pid = fork();
   if (pid == 0) {
     write(1, "I'm the Child, and my {PID,TID} is: ", strlen("I'm the Child, and my {PID,TID} is: "));
@@ -66,42 +51,112 @@ int joc_probes_1() {
   return 0;
 }
 
-int __attribute__ ((__section__(".text.main")))
-  main(void)
+void joc_proves_2_aux_thread (int* value)
 {
-    /* Next line, tries to move value 0 to CR3 register. This register is a privileged one, and so it will raise an exception */
-     /* __asm__ __volatile__ ("mov %0, %%cr3"::"r" (0) ); */
-
-/*
-  int variable = 15;
-  pthread_t id;
-  //yield();
-  int p = pthread_create(&id, (void*) do_nothing, &variable);
-  if (p == 0)     write(1, "Thread created! \n", strlen("Thread created! \n"));
-  else perror();
-
-
-  sem_init(&sem, 0);
-  sem_wait(sem);
-  sem_destroy(sem);
-
-  write(1, "1\n", strlen("1\n"));
-
-  int ret;
-  // Arribem que el thread ja és zombie
-  pthread_join(id, &ret);
-
-  write(1, "2\n", strlen("2\n"));
-
-  itoa(ret, buff);
+  write(1, "New thread created with TID: ", strlen("New thread created with TID: "));
+  itoa(getTid(), buff);
   write(1, buff, strlen(buff));
   write(1, "\n", strlen("\n"));
 
-  write(1, "3\n", strlen("3\n")); 	*/
+  int local = 15;
+  /* TODO: int local = *value --> crash */
 
+  write(1, "Going to wakeup Dad\n", strlen("Going to wakeup Dad\n"));
+  sem_post(sem);
+  write(1, "Dad awake\n", strlen("Dad awake\n"));
+
+  pthread_exit(&local);
+}
+
+/* Joc de proves 2: pthread_create(), pthreads_exit(), pthreads_join() with only one process */
+int joc_proves_2()
+{
+  pthread_t id;
+  int value = 15;
+  int ret = 0;
+
+  sem_init(&sem, 0);
+
+  if (pthread_create(&id,(unsigned int*) &joc_proves_2_aux_thread, &value)) return -1;
+
+  /* Wait for slave to become zombie */
+  write(1, "Dad going to sleep on signal\n", strlen("Dad going to sleep on signal\n"));
+  sem_wait(sem);
+  write(1, "Dad wake up from signal\n", strlen("Dad wake up from signal\n"));
+
+  write(1, "Going to take join value", strlen("Going to take join value"));
+  pthread_join(id, &ret);
+
+  if (ret != value) return -1;
+
+  write(1, "ret == value\n", strlen("ret == value\n"));
+
+  sem_destroy(sem);
+
+  return 0;
+}
+
+void joc_proves_3_aux_thread ()
+{
+  write(1, "New thread created with TID: ", strlen("New thread created with TID: "));
+  itoa(getTid(), buff);
+  write(1, buff, strlen(buff));
   write(1, "\n", strlen("\n"));
-  if (joc_probes_1() != 0)   write(1, "Error Joc probes 1\n", strlen("Error Joc probes 1\n"));
-  else write(1, "Joc probes 1 completed with success\n", strlen("Joc probes 1 completed with success\n"));
 
-  while(1) { }
+  write(1, "Going to wakeup Dad\n", strlen("Going to wakeup Dad\n"));
+  sem_post(sem);
+  write(1, "Dad awake\n", strlen("Dad awake\n"));
+
+  pthread_exit((void*) 0);
+}
+
+/* Joc de proves 3: sem_init(), sem_wait(), sem_post(), sem_destroy() with only one process and two threads */
+int joc_proves_3()
+{
+  pthread_t id;
+
+  /* Init for sync */
+  sem_init(&sem, 0);
+
+  if (pthread_create(&id,(unsigned int*) &joc_proves_3_aux_thread, (void*)0) < 0) return -1;
+
+  write(1, "Dad going to sleep on signal\n", strlen("Dad going to sleep on signal\n"));
+  sem_wait(sem);
+  write(1, "Dad wake up from signal\n", strlen("Dad wake up from signal\n"));
+
+  sem_destroy(sem);
+
+  return 0;
+}
+
+int __attribute__ ((__section__(".text.main")))
+  main(void)
+{
+  /* Next line, tries to move value 0 to CR3 register. This register is a privileged one, and so it will raise an exception */
+  /* __asm__ __volatile__ ("mov %0, %%cr3"::"r" (0) ); */
+  
+  write(1, "\n", strlen("\n"));
+  
+  int selected = 2;
+
+  switch (selected)
+  {
+    case 1:
+      if (joc_proves_1() != 0)   write(1, "Error Joc proves 1\n", strlen("Error Joc proves 1\n"));
+      else write(1, "Joc proves 1 completed with success\n", strlen("Joc proves 1 completed with success\n"));
+      break;
+    case 2:
+      if (joc_proves_2() != 0)   write(1, "Error Joc proves 2\n", strlen("Error Joc proves 2\n"));
+      else write(1, "Joc proves 2 completed with success\n", strlen("Joc proves 2 completed with success\n"));
+      break;
+    case 3:
+      if (joc_proves_3() != 0)   write(1, "Error Joc proves 3\n", strlen("Error Joc proves 3\n"));
+      else write(1, "Joc proves 3 completed with success\n", strlen("Joc proves 3 completed with success\n"));
+      break;
+    default:
+      write(1, "No such test\n", strlen("No such test\n"));
+  }
+
+  /* Infinite loop */
+  while(1){}
 }
