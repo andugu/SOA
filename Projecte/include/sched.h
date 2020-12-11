@@ -128,5 +128,6 @@ void init_stats(struct stats *s);
 int num_threads(struct task_struct* pro);
 
 int link_process_with_thread(struct task_struct* pro, struct thread_struct* thr);
+int unlink_process_and_thread(struct task_struct* pro, struct thread_struct* thr);
 
 #endif  /* __SCHED_H__ */

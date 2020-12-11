@@ -213,11 +213,9 @@ int sys_gettime()
 }
 
 void sys_exit()
-{  
-  int i;
-
-  // free all remaining threads -> millor for del vector que anar fent sys_pthread_exit perquè així ens assegurem que un thread bloquejat per semàfor no evita ser alliberat
-  for (i = 0; i < NR_THREADS; i++) {
+{
+  /* Free remaining threads */
+  for (int i = 0; i < NR_THREADS; i++) {
     if (current()->threads[i] != NULL && current()->threads[i]->TID != -1) {
       if (current()->threads[i]->state != ST_RUN) {
         list_del(&(current()->threads[i]->list));
@@ -231,7 +229,7 @@ void sys_exit()
 
   page_table_entry *process_PT = get_PT(current());
   // Deallocate all the propietary physical pages
-  for (i=0; i<NUM_PAG_DATA; i++)
+  for (int i = 0; i < NUM_PAG_DATA; i++)
   {
     free_frame(get_frame(process_PT, PAG_LOG_INIT_DATA+i));
     del_ss_pag(process_PT, PAG_LOG_INIT_DATA+i);
@@ -318,7 +316,7 @@ int sys_pthread_create(int *id, unsigned int* start_routine, void *arg, unsigned
   unsigned int *p = (unsigned int*)(((thr->pag_userStack+1)<<12)-4);
   *p = (int) arg;
   --p;
-  *p = (unsigned int) ret; // THREAD_RET ES DE MODE USUARI!!!!!
+  *p = (unsigned int) ret;
 
   /* Build up Kernel Stack */
   /* %ebp       -18
@@ -333,36 +331,6 @@ int sys_pthread_create(int *id, unsigned int* start_routine, void *arg, unsigned
   thr_u->stack[KERNEL_STACK_SIZE-2] = (int)p;
 
   return 0;
-}
-
-/* The pthread_exit() function terminates the calling thread and returns
-  a value via retval that (if the thread is joinable) is available to
-  another thread in the same process that calls pthread_join(3).
-
-  Performing a return from the start function of any thread other than
-  the main thread results in an implicit call to pthread_exit(), using
-  the function's return value as the thread's exit status.
-
-  After the last thread in a process terminates, the process terminates
-  as by calling exit(3) with an exit status of zero; thus, process-
-  shared resources are released and functions registered using
-  atexit(3) are called. */
-void sys_pthread_exit(int *retval)
-{
-
-  current_thread()->state = ST_ZOMBIE;
-  *retval = current_thread()->result;
-
-  if (num_threads(current()) == 0)
-  {
-    current_thread()->TID = -1;
-// list_del ??
-// alliberar pàgina de stack
-    list_add_tail(&(current_thread()->list), &freeThread);
-    sys_exit();
-  }
-
-  return;
 }
 
 int sys_pthread_join(int id, int *retval)
@@ -383,13 +351,55 @@ int sys_pthread_join(int id, int *retval)
   if (thr->state != ST_ZOMBIE)
     /* Block caller thread while finishing */
     force_thread_switch_to_blocked(&(thr->notifyAtExit));
-  else
-  {
-    if (retval != NULL)
-      *retval = thr->result;
-  }
+    /* TODO: recall after unblock??? */
+  
+  if (retval != NULL)
+    *retval = thr->result;
+  
+  /* Free TCB of ZOMBIE */
+  thr->TID = -1;
+  list_add(&thr->list, &freeThread);
+  unlink_process_and_thread(current(), thr);
 
 	return 0;
+}
+
+void zombify_and_wakeup()
+{
+  /* Make ST_ZOMBIE and Wake up calls */
+  current_thread()->state = ST_ZOMBIE;
+
+  struct list_head *lhcurrent = NULL;
+  struct thread_struct *thr;
+
+  while (!list_empty(&current_thread()->notifyAtExit))
+  {
+    lhcurrent = list_first(&current_thread()->notifyAtExit);
+
+    thr = (struct thread_struct*)list_head_to_thread_struct(lhcurrent);
+    update_thread_state_rr(thr, &thr->Dad->readyThreads);
+  }
+
+  /* Free all resources but TCB */
+  page_table_entry *process_PT = get_PT(current());
+  free_frame( get_frame(process_PT, current_thread()->pag_userStack) );
+  del_ss_pag(process_PT, current_thread()->pag_userStack);
+
+  if (num_threads(current()) == 1)
+    /* Last thread on exit */
+    sys_exit();
+  else
+    /* Force scheduling without adding to queues */
+    sched_next_thread();
+}
+
+void sys_pthread_exit(int *retval)
+{
+  /* Store result */
+  if (current_thread()->joinable && retval != NULL)
+    current_thread()->result = *retval;
+
+  zombify_and_wakeup();
 }
 
 void sys_pthread_ret()
@@ -406,24 +416,7 @@ void sys_pthread_ret()
   unsigned int *p = (unsigned int*) (((current_thread()->pag_userStack+1)<<12)-4*4);
   current_thread()->result = (unsigned int) *p;
 
-  /* Make ST_ZOMBIE and Wake up calls */
-  current_thread()->state = ST_ZOMBIE;
-
-  struct list_head *lhcurrent = NULL;
-  struct thread_struct *thr;
-
-  while (!list_empty(&current_thread()->notifyAtExit))
-  {
-    lhcurrent = list_first(&current_thread()->notifyAtExit);
-
-    thr = (struct thread_struct*)list_head_to_thread_struct(lhcurrent);
-    update_thread_state_rr(thr, &thr->Dad->readyThreads);
-
-    /* TODO: Recall sys_pthread_join? */
-  }
-
-  /* Force scheduling */
-  sched_next_thread();
+  zombify_and_wakeup();
 }
 
 int sys_sem_init(int* id, unsigned int value)
@@ -486,12 +479,6 @@ int sys_sem_post(int id)
     /* update_thread_state_rr already does list_del() */
 
     struct thread_struct* thr = list_head_to_thread_struct(lhcurrent);
-
-    if (!check_blocked_threads(thr->Dad)){
-      /* All threads of process blocked */
-      /* Process is in ST_BLOCKED state */
-      update_process_state_rr(thr->Dad, &readyqueue);
-    }
 
     update_thread_state_rr(thr, &(thr->Dad->readyThreads));
   }

@@ -85,8 +85,8 @@ void cpu_idle(void)
 int remaining_quantum = 0;
 int remaining_thread_quantum = 0;
 
-struct task_struct *idle_task=NULL;
-struct thread_struct *idle_thread=NULL;
+struct task_struct *idle_task = NULL;
+struct thread_struct *idle_thread = NULL;
 
 void update_sched_data_rr(void)
 {
@@ -119,15 +119,11 @@ void update_process_state_rr(struct task_struct *t, struct list_head *dst_queue)
     {
       update_stats(&(t->p_stats.system_ticks), &(t->p_stats.elapsed_total_ticks));
       t->state=ST_READY;
+      if (current_thread() != idle_thread)
+        update_thread_state_rr(current_thread(), &(current()->readyThreads));
     }
   }
-  else
-  {
-    t->state=ST_RUN;
-  }
-
-  /* TODO: why? */
-  update_thread_state_rr(current_thread(), &(current()->readyThreads));
+  else t->state=ST_RUN;
 }
 
 void update_thread_state_rr(struct thread_struct *t, struct list_head *dst_queue)
@@ -136,7 +132,7 @@ void update_thread_state_rr(struct thread_struct *t, struct list_head *dst_queue
   if (dst_queue!=NULL)
   {
     list_add_tail(&(t->list), dst_queue);
-    if (dst_queue!=&(current()->readyThreads)) t->state=ST_BLOCKED;
+    if (dst_queue!=&(t->Dad->readyThreads)) t->state=ST_BLOCKED;
     else
     {
       //update_stats(&(t->t_stats.system_ticks), &(t->t_stats.elapsed_total_ticks));
@@ -151,7 +147,8 @@ void sched_next_rr(void)
   struct list_head *e;
   struct task_struct *t;
 
-  if (!list_empty(&readyqueue)) {
+  if (!list_empty(&readyqueue))
+  {
     e = list_first(&readyqueue);
     list_del(e);
     t=list_head_to_task_struct(e);
@@ -178,19 +175,8 @@ void sched_next_thread(void)
     e = list_first(&(current()->readyThreads));
     list_del(e);
     t = list_head_to_thread_struct(e);
-  } else t=idle_thread;
-
-/*
-  else
-  {
-    if (!check_current_threads_blocked())
-      // If a process has no unblocked threads left
-      force_task_switch_to_blocked();
-    else
-      // No threads to run but not blocked
-      force_task_switch();
-  } 
-*/
+  }
+  else t = idle_thread;
 
   t->state=ST_RUN;
   remaining_thread_quantum=t->total_quantum;
@@ -211,19 +197,9 @@ void sched_next_thread_of_proc(struct task_struct* c)
   {
     e = list_first(&(c->readyThreads));
     list_del(e);
-    t=list_head_to_thread_struct(e);
-  } else t = idle_thread;
-
-/*
-  else
-  {
-    if (!check_current_threads_blocked())
-      // If a process has no unblocked threads left
-      force_task_switch_to_blocked();
-    else
-      // No threads to run but not blocked
-      force_task_switch();
-  }*/
+    t = list_head_to_thread_struct(e);
+  }
+  else t = idle_thread;
 
   t->state=ST_RUN;
   remaining_thread_quantum=t->total_quantum;
@@ -233,7 +209,7 @@ void sched_next_thread_of_proc(struct task_struct* c)
   t->t_stats.total_trans++;
 
   if (t != current_thread()) {
-// In force_task_switch, a thread could thread_switch with itself
+    // In force_task_switch, a thread could thread_switch with itself
     set_cr3(get_DIR(t->Dad));
     thread_switch((union thread_union*)t);
   }
@@ -497,6 +473,25 @@ int link_process_with_thread(struct task_struct* pro, struct thread_struct* thr)
   list_add_tail(&(thr->list), &(pro->readyThreads));
   thr->Dad = pro;
   return 0;
+}
+
+/* Unlinks a process and a thread
+   Pre: Nono
+   Post:
+      0 -> Ok!
+      -1 -> pro dosn't have any thread with such TID */
+int unlink_process_and_thread(struct task_struct* pro, struct thread_struct* thr)
+{
+  for (int i = 0; i < NR_THREADS; ++i)
+  {
+    if (pro->threads[i] != NULL && pro->threads[i]->TID == thr->TID)
+    {
+      pro->threads[i] = NULL;
+      thr->Dad = NULL;
+      return 0;
+    }
+  }
+  return -1;
 }
 
 /* Number of threads in process
