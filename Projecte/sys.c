@@ -54,6 +54,12 @@ int sys_getpid()
 	return current()->PID;
 }
 
+int sys_getTid()
+{
+	return current_thread()->TID;
+}
+
+
 int global_PID=1000;
 int global_TID=1000;
 

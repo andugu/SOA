@@ -65,6 +65,15 @@ ENTRY(getpid)
 	popl %ebp
 	ret
 
+/* int getTid() */
+ENTRY(getTid)
+	pushl %ebp
+	movl %esp, %ebp
+	movl $21, %eax
+	call syscall_sysenter
+	popl %ebp
+	ret
+
 /* int fork() */
 ENTRY(fork)
 	pushl %ebp
