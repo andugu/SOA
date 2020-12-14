@@ -51,15 +51,14 @@ int joc_proves_1()
   return 0;
 }
 
-void joc_proves_2_aux_thread (int* value)
+void joc_proves_2_aux_thread(int* value)
 {
   write(1, "New thread created with TID: ", strlen("New thread created with TID: "));
   itoa(getTid(), buff);
   write(1, buff, strlen(buff));
   write(1, "\n", strlen("\n"));
 
-  int local = 15;
-  /* TODO: int local = *value --> crash */
+  int local = *value;
 
   write(1, "Going to wakeup Dad\n", strlen("Going to wakeup Dad\n"));
   sem_post(sem);
@@ -96,7 +95,7 @@ int joc_proves_2()
   return 0;
 }
 
-void joc_proves_3_aux_thread ()
+void joc_proves_3_aux_thread()
 {
   write(1, "New thread created with TID: ", strlen("New thread created with TID: "));
   itoa(getTid(), buff);
@@ -129,6 +128,34 @@ int joc_proves_3()
   return 0;
 }
 
+int joc_proves_4_aux_thread()
+{
+  write(1, "New thread created with TID: ", strlen("New thread created with TID: "));
+  itoa(getTid(), buff);
+  write(1, buff, strlen(buff));
+  write(1, "\n", strlen("\n"));
+
+  return 5;
+}
+
+/* Joc de proves 4: pthread_join() when a child thread isn't a Zombie & pthread_ret() */
+int joc_proves_4()
+{
+  pthread_t id;
+  int ret = 0;
+
+  if (pthread_create(&id,(unsigned int*) &joc_proves_4_aux_thread, (void*)0) < 0) return -1;
+
+  write(1, "Dad enters pthread_join()\n", strlen("Dad enters pthread_join()\n"));
+  pthread_join(id, &ret);
+  write(1, "Dad exited pthread_join()\n", strlen("Dad exited pthread_join()\n"));
+
+  if (ret != 5)
+    write (1, "Incorrect return value of thread\n", strlen("Incorrect return value of thread\n"));
+
+  return 0;
+}
+
 int __attribute__ ((__section__(".text.main")))
   main(void)
 {
@@ -152,6 +179,10 @@ int __attribute__ ((__section__(".text.main")))
     case 3:
       if (joc_proves_3() != 0)   write(1, "Error Joc proves 3\n", strlen("Error Joc proves 3\n"));
       else write(1, "Joc proves 3 completed with success\n", strlen("Joc proves 3 completed with success\n"));
+      break;
+    case 4:
+      if (joc_proves_4() != 0)   write(1, "Error Joc proves 4\n", strlen("Error Joc proves 4\n"));
+      else write(1, "Joc proves 4 completed with success\n", strlen("Joc proves 4 completed with success\n"));
       break;
     default:
       write(1, "No such test\n", strlen("No such test\n"));
