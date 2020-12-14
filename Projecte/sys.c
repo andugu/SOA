@@ -307,17 +307,6 @@ int sys_get_stats(int pid, struct stats *st)
   return -ESRCH; /*ESRCH */
 }
 
-int strlen(char *a)
-{
-  int i;
-  
-  i=0;
-  
-  while (a[i]!=0) i++;
-  
-  return i;
-}
-
 int sys_pthread_create(int *id, unsigned int* start_routine, void *arg, unsigned int* ret)
 {
   struct list_head *lhcurrent = NULL;
