@@ -2,6 +2,7 @@ SUMMARY
 
 TODO:
 1. La funció pthread_ret genera un page fault quan intenta agafar el valor de %eax (valor de retorn de la funció cridada) de la pila d'usuari.
+1.5 El fork caldrà arreglar-lo perquè tingui en compte la pila d'usuari del thread. Què fem amb procés init i la seva pila??
 2. La funció pthread_join no tinc molt clar com implementar-la per quan el procés encara no és zombie i hem d'esperar el resultat. Un cop despertem el thread que hem adormit hem de fer que torni a cridar a pthread_join? Com segueix la execució? Va baixant per la pila de kernel fins tornar a la funció i seguir???
 
 WORKING:
