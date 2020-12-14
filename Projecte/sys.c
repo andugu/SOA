@@ -298,7 +298,6 @@ int sys_pthread_create(int *id, unsigned int* start_routine, void *arg, unsigned
   thr->state = ST_READY;
   thr->joinable = 1;
   init_stats(&thr->t_stats);
-  /* TODO: crash? */
   INIT_LIST_HEAD(&(thr->notifyAtExit));
 
   if (link_process_with_thread(current(), thr) < 0) return -ENOMEM;
@@ -308,9 +307,9 @@ int sys_pthread_create(int *id, unsigned int* start_routine, void *arg, unsigned
   page_table_entry *process_PT = get_PT(current());
   /* Find free logical pag */
   int pos = -1;
-  for (int pag = 0; pos == -1 && pos < TOTAL_PAGES-PAG_LOG_INIT_DATA; pag++)
-    if (process_PT[PAG_LOG_INIT_DATA+pag].entry == 0) pos = pag;
-  thr->pag_userStack = PAG_LOG_INIT_DATA+pos;
+  for (int pag = 0; pos == -1 && pos < TOTAL_PAGES-(PAG_LOG_INIT_DATA+NUM_PAG_DATA); pag++)
+    if (process_PT[PAG_LOG_INIT_DATA+NUM_PAG_DATA+pag].entry == 0) pos = pag;
+  thr->pag_userStack = PAG_LOG_INIT_DATA+NUM_PAG_DATA+pos;
   /* Find free physical pag */
   int new_ph_pag = alloc_frame();
   /* Bind pages together */
@@ -442,7 +441,6 @@ int sys_sem_init(int* id, unsigned int value)
   *id = sem->id;
   sem->count = value;
   sem->in_use = 1;
-  /* TODO: Crash? */
   INIT_LIST_HEAD(&(sem->blocked));
 
   return 0;
