@@ -250,7 +250,7 @@ void sys_exit()
   page_table_entry *process_PT = get_PT(current());
 
   /* Free remaining threads */
-  for (int i = 0; i < NR_THREADS; i++) {
+  for (int i = 0; i < NR_THREADSxTASK; i++) {
     if (current()->threads[i] != NULL && current()->threads[i]->TID != -1) {
       if (current()->threads[i]->state != ST_RUN) {
         list_del(&(current()->threads[i]->list));
@@ -310,9 +310,9 @@ int sys_get_stats(int pid, struct stats *st)
 int sys_pthread_create(int *id, unsigned int* start_routine, void *arg, unsigned int* ret)
 {
   struct list_head *lhcurrent = NULL;
-  
+    
   /* Any free threads? */
-  if (list_empty(&freeThread) || num_threads(current()) == 10) return -ENOMEM;
+  if (list_empty(&freeThread) || num_threads(current()) >= 10) return -ENOMEM;
 
   lhcurrent = list_first(&freeThread);
   list_del(lhcurrent);
@@ -364,7 +364,6 @@ int sys_pthread_create(int *id, unsigned int* start_routine, void *arg, unsigned
   thr_u->stack[KERNEL_STACK_SIZE-5] = (unsigned int)start_routine;
   /* %esp */
   thr_u->stack[KERNEL_STACK_SIZE-2] = (int)p;
-
   return 0;
 }
 
@@ -372,7 +371,7 @@ int sys_pthread_join(int id, int *retval)
 {
   /* Check if thread(id) exists */
   struct thread_struct *thr = NULL;
-  for (int i = 0; i < NR_THREADS; ++i)
+  for (int i = 0; i < NR_THREADSxTASK; ++i)
     if (current()->threads[i] != NULL && current()->threads[i]->TID == id) thr = current()->threads[i];
   if (thr == NULL) return -ESRCH;
 

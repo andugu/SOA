@@ -12,6 +12,7 @@
 
 
 #define NR_TASKS            10
+#define NR_THREADSxTASK     10
 #define NR_THREADS          20
 #define NR_SEMAFORS         20
 #define KERNEL_STACK_SIZE   1024
@@ -27,7 +28,7 @@ struct task_struct {
   struct stats p_stats;                         /* Process stats */
   int total_quantum;                            /* Total quantum of the process */
   struct list_head readyThreads;                /* List of threads of process ready to exec */
-  struct thread_struct* threads[NR_THREADS];    /* Pointers to threads of the process */
+  struct thread_struct* threads[NR_THREADSxTASK];    /* Pointers to threads of the process */
 };
 
 struct thread_struct {

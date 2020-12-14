@@ -405,7 +405,7 @@ int check_current_threads_blocked()
 {
   int ret = 0;
 
-  for (int i = 0; i < NR_THREADS; ++i)
+  for (int i = 0; i < NR_THREADSxTASK; ++i)
     if (current()->threads[i] != NULL && current()->threads[i]->state != ST_BLOCKED)
       ret = 1;
 
@@ -421,7 +421,7 @@ int check_blocked_threads(struct task_struct *t)
 {
   int ret = 0;
 
-  for (int i = 0; i < NR_THREADS; ++i)
+  for (int i = 0; i < NR_THREADSxTASK; ++i)
     if (t->threads[i] != NULL && t->threads[i]->state != ST_BLOCKED)
       ret = 1;
 
@@ -465,7 +465,7 @@ void force_thread_switch_to_blocked(struct list_head* blocked)
 int link_process_with_thread(struct task_struct* pro, struct thread_struct* thr)
 {
   int pos = -1;
-  for (int i=0; i < NR_THREADS; i++) {
+  for (int i=0; i < NR_THREADSxTASK; i++) {
     if (pro->threads[i] != NULL && pro->threads[i]->TID == thr->TID) return -2;
     if (pos == -1 && (pro->threads[i] == NULL || pro->threads[i]->TID == -1)) pos = i;
   }
@@ -480,10 +480,10 @@ int link_process_with_thread(struct task_struct* pro, struct thread_struct* thr)
    Pre: Nono
    Post:
       0 -> Ok!
-      -1 -> pro dosn't have any thread with such TID */
+      -1 -> pro doesn't have any thread with such TID */
 int unlink_process_and_thread(struct task_struct* pro, struct thread_struct* thr)
 {
-  for (int i = 0; i < NR_THREADS; ++i)
+  for (int i = 0; i < NR_THREADSxTASK; ++i)
   {
     if (pro->threads[i] != NULL && pro->threads[i]->TID == thr->TID)
     {
@@ -499,9 +499,10 @@ int unlink_process_and_thread(struct task_struct* pro, struct thread_struct* thr
  * Pre: None
  * Post: Number of threads in pro*/
 int num_threads(struct task_struct* pro) {
-  int n = 10;
-  for (int i=0; i < NR_THREADS; i++) {
-     if (pro->threads[i] == NULL || pro->threads[i]->TID == -1) --n;
+  int n = 0;
+  printk("YE");
+  for (int i=0; i < NR_THREADSxTASK; i++) {
+     if (pro->threads[i] != NULL && pro->threads[i]->TID != -1) n++;
   }
   return n;
 }

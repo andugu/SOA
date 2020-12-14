@@ -453,6 +453,43 @@ int joc_proves_8()
   return 0;
 }
 
+void joc_proves_9_aux_thread()
+{
+  write(1, "My {PID,TID} is: ", strlen("My {PID,TID} is: "));
+  itoa(getpid(), buff);
+  write(1, buff, strlen(buff));
+  write(1, ",", strlen(","));
+  itoa(getTid(), buff);
+  write(1, buff, strlen(buff));
+  write(1, "\n", strlen("\n"));
+  sem_wait(sem);
+  sem_post(sem);
+  write(1, "Bye!", strlen("Bye!"));
+  pthread_exit((void*)0);
+}
+
+int joc_proves_9_threads()
+{
+  pthread_t id;
+  sem_init(&sem, 0);
+  for (int w = 0; w <= 10; w++) { // in w == 10, it should return error.
+    if (pthread_create(&id,(unsigned int*) &joc_proves_9_aux_thread, (void*)0) < 0) {
+      if (w == 10) return 0;
+      return -1;
+    }
+  }
+  return -1;
+}
+
+/* Joc de proves 9: Creating more than 10 process!*/
+int joc_proves_9()
+{
+  if (joc_proves_9_threads() != 0) return -1;
+  sem_post(sem);
+
+  return 0;
+}
+
 int __attribute__ ((__section__(".text.main")))
   main(void)
 {
@@ -462,6 +499,7 @@ int __attribute__ ((__section__(".text.main")))
   write(1, "\n", strlen("\n"));
   
   int selected = 8;
+  /************ JOC PROVES 9 IS NOT FULLY FUNCTIONING TODO: FIX IT!*************/
 
   switch (selected)
     {
@@ -496,6 +534,10 @@ int __attribute__ ((__section__(".text.main")))
       case 8:
         if (joc_proves_8() != 0)   write(1, "Error Joc proves 8\n", strlen("Error Joc proves 8\n"));
         else write(1, "Joc proves 8 completed with success\n", strlen("Joc proves 8 completed with success\n"));
+        break;
+      case 9:
+        if (joc_proves_9() != 0)   write(1, "Error Joc proves 9\n", strlen("Error Joc proves 9\n"));
+        else write(1, "Joc proves 9 completed with success\n", strlen("Joc proves 9 completed with success\n"));
         break;
       default:
         write(1, "No such test\n", strlen("No such test\n"));
