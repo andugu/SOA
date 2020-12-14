@@ -308,7 +308,7 @@ int sys_pthread_create(int *id, unsigned int* start_routine, void *arg, unsigned
   page_table_entry *process_PT = get_PT(current());
   /* Find free logical pag */
   int pos = -1;
-  for (int pag = 0; pos != -1 && pos < TOTAL_PAGES-PAG_LOG_INIT_DATA; pag++)
+  for (int pag = 0; pos == -1 && pos < TOTAL_PAGES-PAG_LOG_INIT_DATA; pag++)
     if (process_PT[PAG_LOG_INIT_DATA+pag].entry == 0) pos = pag;
   thr->pag_userStack = PAG_LOG_INIT_DATA+pos;
   /* Find free physical pag */
@@ -357,7 +357,6 @@ int sys_pthread_join(int id, int *retval)
   if (thr->state != ST_ZOMBIE)
     /* Block caller thread while finishing */
     force_thread_switch_to_blocked(&(thr->notifyAtExit));
-    /* TODO: recall after unblock??? */
   
   if (retval != NULL)
     *retval = thr->result;
@@ -420,7 +419,7 @@ void sys_pthread_ret()
 
   /* Store result */
   unsigned int *p = (unsigned int*) (((current_thread()->pag_userStack+1)<<12)-4*4);
-  current_thread()->result = (unsigned int) *p;
+  copy_from_user(p, &(current_thread()->result), sizeof(int));
 
   zombify_and_wakeup();
 }
