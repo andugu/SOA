@@ -90,11 +90,25 @@ int sys_fork(void)
 
   /* new pages dir */
   allocate_DIR(lh);
-  
-  /************************************	TODO: STACK MISSING!	***********************************/
-  /* Allocate pages for DATA+STACK */
-  int new_ph_pag, pag, i;
+
   page_table_entry *process_PT = get_PT(lh);
+
+  int stack_page = -1;
+  if (uchild->thread.pag_userStack != 283) //Daddy's new process is not thread init => we must copy the user stack
+  {
+    stack_page=alloc_frame();
+    if (stack_page!=-1)
+    {
+      set_ss_pag(process_PT, uchild->thread.pag_userStack, stack_page);
+    }
+    else 
+    {
+      return -EAGAIN;
+    }
+  }
+  
+  /* Allocate pages for DATA */
+  int new_ph_pag, pag, i;
   for (pag=0; pag<NUM_PAG_DATA; pag++)
   {
     new_ph_pag=alloc_frame();
@@ -104,6 +118,10 @@ int sys_fork(void)
     }
     else /* No more free pages left. Deallocate everything */
     {
+      if (stack_page != -1) {
+        free_frame(get_frame(process_PT, uchild->thread.pag_userStack));
+        del_ss_pag(process_PT, uchild->thread.pag_userStack);
+      }
       /* Deallocate allocated pages. Up to pag. */
       for (i=0; i<pag; i++)
       {
@@ -118,6 +136,7 @@ int sys_fork(void)
       return -EAGAIN; 
     }
   }
+
 
   /* Copy parent's SYSTEM and CODE to child. */
   page_table_entry *parent_PT = get_PT(current());
@@ -137,6 +156,14 @@ int sys_fork(void)
     copy_data((void*)(pag<<12), (void*)((pag+NUM_PAG_DATA)<<12), PAGE_SIZE);
     del_ss_pag(parent_PT, pag+NUM_PAG_DATA);
   }
+
+  pag=NUM_PAG_KERNEL+NUM_PAG_CODE;
+  set_cr3(get_DIR(current())); // To reuse the page pag to copy the new stack
+  /* Copy User Stack */
+  set_ss_pag(parent_PT, pag+NUM_PAG_DATA, get_frame(process_PT, uchild->thread.pag_userStack));
+  copy_data((void*)((current_thread()->pag_userStack)<<12), (void*)((pag+NUM_PAG_DATA)<<12), PAGE_SIZE);
+  del_ss_pag(parent_PT, pag+NUM_PAG_DATA);
+
   /* Deny access to the child's memory space */
   set_cr3(get_DIR(current()));
 
@@ -220,20 +247,24 @@ int sys_gettime()
 
 void sys_exit()
 {
+  page_table_entry *process_PT = get_PT(current());
+
   /* Free remaining threads */
   for (int i = 0; i < NR_THREADS; i++) {
     if (current()->threads[i] != NULL && current()->threads[i]->TID != -1) {
       if (current()->threads[i]->state != ST_RUN) {
         list_del(&(current()->threads[i]->list));
+        if (current()->threads[i]->pag_userStack != 283) // 283 is the init thread user Stack that will be deleted with all the DATA pages
+        {
+          free_frame(get_frame(process_PT, current()->threads[i]->pag_userStack));
+          del_ss_pag(process_PT, current()->threads[i]->pag_userStack);
+        }
       }
       list_add_tail(&(current()->threads[i]->list), &freeThread);
       current()->threads[i]->TID = -1;
     }
   }
 
-  // TODO: Free the thread's stack frame????
-
-  page_table_entry *process_PT = get_PT(current());
   // Deallocate all the propietary physical pages
   for (int i = 0; i < NUM_PAG_DATA; i++)
   {
@@ -276,6 +307,17 @@ int sys_get_stats(int pid, struct stats *st)
   return -ESRCH; /*ESRCH */
 }
 
+int strlen(char *a)
+{
+  int i;
+  
+  i=0;
+  
+  while (a[i]!=0) i++;
+  
+  return i;
+}
+
 int sys_pthread_create(int *id, unsigned int* start_routine, void *arg, unsigned int* ret)
 {
   struct list_head *lhcurrent = NULL;
@@ -287,7 +329,7 @@ int sys_pthread_create(int *id, unsigned int* start_routine, void *arg, unsigned
   list_del(lhcurrent);
 
   struct thread_struct *thr = (struct thread_struct*)list_head_to_thread_struct(lhcurrent);
-  union thread_union *thr_u = (union thread_union*)list_head_to_thread_struct(lhcurrent);
+  union thread_union *thr_u = (union thread_union*)thr;
 
   /* Copy thread_union from caller */
   copy_data(current_thread(), thr_u, sizeof(union thread_union));
@@ -307,14 +349,13 @@ int sys_pthread_create(int *id, unsigned int* start_routine, void *arg, unsigned
   page_table_entry *process_PT = get_PT(current());
   /* Find free logical pag */
   int pos = -1;
-  for (int pag = 0; pos == -1 && pos < TOTAL_PAGES-(PAG_LOG_INIT_DATA+NUM_PAG_DATA); pag++)
-    if (process_PT[PAG_LOG_INIT_DATA+NUM_PAG_DATA+pag].entry == 0) pos = pag;
-  thr->pag_userStack = PAG_LOG_INIT_DATA+NUM_PAG_DATA+pos;
+  for (int pag = TOTAL_PAGES-1; pos == -1 && pag > PAG_LOG_INIT_DATA+NUM_PAG_DATA; pag--)
+    if (process_PT[pag].entry == 0) pos = pag;
+  thr->pag_userStack = pos;
   /* Find free physical pag */
   int new_ph_pag = alloc_frame();
   /* Bind pages together */
   set_ss_pag(process_PT, thr->pag_userStack, new_ph_pag);
-
   /* Build up User Stack */
   /* @pthread_ret <- %esp
      *arg */

@@ -311,6 +311,148 @@ int joc_proves_6()
   return 0;
 }
 
+
+void joc_proves_7_aux_thread()
+{
+  write(1, "My {PID,TID} is: ", strlen("My {PID,TID} is: "));
+  itoa(getpid(), buff);
+  write(1, buff, strlen(buff));
+  write(1, ",", strlen(","));
+  itoa(getTid(), buff);
+  write(1, buff, strlen(buff));
+  write(1, "\n", strlen("\n"));
+
+  write(1, "My main thread should come back to CPU\n", strlen("My main thread should come back to CPU\n"));
+  pthread_exit((void*) 0);
+}
+
+/* Joc de proves 7: Thread_switch between multiple threads and multiple process to test process management */
+int joc_proves_7()
+{
+  pthread_t id;
+  int pid = fork();
+  if (pthread_create(&id,(unsigned int*) &joc_proves_7_aux_thread, (void*)0) < 0) return -1;
+  if (pid == 0) {
+    write(1, "My {PID,TID} is: ", strlen("My {PID,TID} is: "));
+    itoa(getpid(), buff);
+    write(1, buff, strlen(buff));
+    write(1, ",", strlen(","));
+    itoa(getTid(), buff);
+    write(1, buff, strlen(buff));
+    write(1, "\n", strlen("\n"));
+    write(1, "Now, my Dad's second thread should come back to CPU\n", strlen("Now, my Dad's second thread should come back to CPU\n"));
+    if (yield() < 0) return -1;
+    write(1, "I'm back, {PID,TID} is ", strlen("I'm back, {PID,TID} is "));
+    itoa(getpid(), buff);
+    write(1, buff, strlen(buff));
+    write(1, ",", strlen(","));
+    itoa(getTid(), buff);
+    write(1, buff, strlen(buff));
+    write(1, "\n", strlen("\n"));
+  } else if (pid > 0) {
+    write(1, "My {PID,TID} is: ", strlen("My {PID,TID} is: "));
+    itoa(getpid(), buff);
+    write(1, buff, strlen(buff));
+    write(1, ",", strlen(","));
+    itoa(getTid(), buff);
+    write(1, buff, strlen(buff));
+    write(1, "\n", strlen("\n"));
+    write(1, "Now, my main child thread should come to CPU\n", strlen("Now, my main child thread should come to CPU\n"));
+    if (yield() < 0) return -1;
+    write(1, "I'm back, {PID,TID} is ", strlen("I'm back, {PID,TID} is "));
+    itoa(getpid(), buff);
+    write(1, buff, strlen(buff));
+    write(1, ",", strlen(","));
+    itoa(getTid(), buff);
+    write(1, buff, strlen(buff));
+    write(1, "\n", strlen("\n"));
+    write(1, "Now, my second child thread should come to CPU\n", strlen("Now, my second child thread should come to CPU\n"));
+    if (yield() < 0) return -1;
+    write(1, "I'm back, {PID,TID} is ", strlen("I'm back, {PID,TID} is "));
+    itoa(getpid(), buff);
+    write(1, buff, strlen(buff));
+    write(1, ",", strlen(","));
+    itoa(getTid(), buff);
+    write(1, buff, strlen(buff));
+    write(1, "\n", strlen("\n"));
+  } else perror();
+
+  if (pid == 0) {
+    write(1, "Bye, I'm leaving!\n", strlen("Bye, I'm leaving!\n"));
+    exit(); /* Dad should exit */
+    write(1, "Error!!!\n", strlen("Error!!!\n"));
+    return -1;
+  }
+
+  return 0;
+}
+
+void joc_proves_8_aux_thread2()
+{
+  while(1);
+  write(1, "Error!!!!!!", strlen("Error!!!!!!"));
+}
+
+void joc_proves_8_aux_thread()
+{
+  write(1, "My {PID,TID} is: ", strlen("My {PID,TID} is: "));
+  itoa(getpid(), buff);
+  write(1, buff, strlen(buff));
+  write(1, ",", strlen(","));
+  itoa(getTid(), buff);
+  write(1, buff, strlen(buff));
+  write(1, "\n", strlen("\n"));
+
+  int pid = fork();
+  if (pid == 0) {
+    write(1, "My {PID,TID} is: ", strlen("My {PID,TID} is: "));
+    itoa(getpid(), buff);
+    write(1, buff, strlen(buff));
+    write(1, ",", strlen(","));
+    itoa(getTid(), buff);
+    write(1, buff, strlen(buff));
+    write(1, "\n", strlen("\n"));
+    pthread_t id;
+    if (pthread_create(&id,(unsigned int*) &joc_proves_8_aux_thread2, (void*)0) < 0) write(1, "Error!!!", strlen("Error!!!"));
+    exit();
+  } else {
+    if (yield() < 0) write(1, "Error!!!", strlen("Error!!!"));
+    write(1, "My {PID,TID} is: ", strlen("My {PID,TID} is: "));
+    itoa(getpid(), buff);
+    write(1, buff, strlen(buff));
+    write(1, ",", strlen(","));
+    itoa(getTid(), buff);
+    write(1, buff, strlen(buff));
+    write(1, "\n", strlen("\n"));
+  }
+
+  pthread_exit((void*) 0);
+}
+
+/* Joc de proves 8: A pthread doing a Fork()! && doing an exit with pthread alives!*/
+int joc_proves_8()
+{
+  pthread_t id;
+  int ret;
+  write(1, "My {PID,TID} is: ", strlen("My {PID,TID} is: "));
+  itoa(getpid(), buff);
+  write(1, buff, strlen(buff));
+  write(1, ",", strlen(","));
+  itoa(getTid(), buff);
+  write(1, buff, strlen(buff));
+  write(1, "\n", strlen("\n"));
+  if (pthread_create(&id,(unsigned int*) &joc_proves_8_aux_thread, (void*)0) < 0) return -1;
+  pthread_join(id, &ret);
+  write(1, "My {PID,TID} is: ", strlen("My {PID,TID} is: "));
+  itoa(getpid(), buff);
+  write(1, buff, strlen(buff));
+  write(1, ",", strlen(","));
+  itoa(getTid(), buff);
+  write(1, buff, strlen(buff));
+  write(1, "\n", strlen("\n"));
+  return 0;
+}
+
 int __attribute__ ((__section__(".text.main")))
   main(void)
 {
@@ -319,7 +461,7 @@ int __attribute__ ((__section__(".text.main")))
   
   write(1, "\n", strlen("\n"));
   
-  int selected = 1;
+  int selected = 8;
 
   switch (selected)
     {
@@ -346,6 +488,14 @@ int __attribute__ ((__section__(".text.main")))
       case 6:
         if (joc_proves_6() != 0)   write(1, "Error Joc proves 6\n", strlen("Error Joc proves 6\n"));
         else write(1, "Joc proves 6 completed with success\n", strlen("Joc proves 6 completed with success\n"));
+        break;
+      case 7:
+        if (joc_proves_7() != 0)   write(1, "Error Joc proves 7\n", strlen("Error Joc proves 7\n"));
+        else write(1, "Joc proves 7 completed with success\n", strlen("Joc proves 7 completed with success\n"));
+        break;
+      case 8:
+        if (joc_proves_8() != 0)   write(1, "Error Joc proves 8\n", strlen("Error Joc proves 8\n"));
+        else write(1, "Joc proves 8 completed with success\n", strlen("Joc proves 8 completed with success\n"));
         break;
       default:
         write(1, "No such test\n", strlen("No such test\n"));

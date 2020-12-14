@@ -290,6 +290,7 @@ void init_task1(void)
   thr->total_quantum = DEFAULT_QUANTUM_THREAD;
   thr->state = ST_RUN;
   thr->joinable = 1;
+  thr->pag_userStack = 283; // The result comes from: (int)(L_USER_START+(NUM_PAG_CODE+NUM_PAG_DATA)*0x1000-16)>>12
   INIT_LIST_HEAD(&(thr->notifyAtExit));
 
   c->PID = 1;
