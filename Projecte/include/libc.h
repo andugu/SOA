@@ -15,6 +15,8 @@ int write(int fd, char *buffer, int size);
 
 void itoa(int a, char *b);
 
+void ltoa(unsigned long* d, char *b);
+
 int strlen(char *a);
 
 void perror();
@@ -22,6 +24,8 @@ void perror();
 int getpid();
 
 int getTid();
+
+int getticks(unsigned long *a);
 
 int get_errno();
 

@@ -540,6 +540,65 @@ int joc_proves_10()
   return 0;
 }
 
+void carrega_de_treball_auxiliar() 
+{
+  pthread_exit((void*)0);
+}
+
+int carrega_de_treball() 
+{
+  pthread_t id[9];
+  unsigned long inici;
+  if (getticks(&inici) < 0) return -1;
+  for (int w = 0; w < 1000; w++) {
+    for (int i = 0; i < 9; i++) {
+      if (pthread_create(&id[i],(unsigned int*) &carrega_de_treball_auxiliar, (void*)0) < 0) return -1;
+    }
+    yield();
+    for (int i = 0; i < 9; i++) {
+      if (pthread_join(id[i],(void*)0) < 0) return -1;
+    }
+  }
+
+  unsigned long fi;
+  if (getticks(&fi) < 0) return -1;
+  unsigned long diff = fi - inici;
+
+  write(1, "Hem comencat amb ", strlen("Hem comencat amb "));
+  ltoa(&inici, buff);
+  write(1, buff, strlen(buff));
+  write(1, " ticks, i hem acabat amb ", strlen(" ticks, i hem acabat amb "));
+  ltoa(&fi, buff);
+  write(1, buff, strlen(buff));
+  write(1, " ticks.\nI aixo es una diferencia de ", strlen(" ticks.\nI aixo es una diferencia de "));
+  ltoa(&diff, buff);
+  write(1, buff, strlen(buff));
+  write(1, " ticks.\nPer tant, la mitjana de crear i destruir un thread es de: ", strlen(" ticks.\nPer tant, la mitjana de crear i destruir un thread es de: "));
+  
+  unsigned long mitjana = diff*100/9;
+  unsigned long mitjana_high = mitjana/100000;
+  unsigned long mitjana_low = mitjana%100000;
+  unsigned long mitjana_low_aux = mitjana_low;
+  
+  int num = 0;
+  while(mitjana_low_aux > 0) {
+    mitjana_low_aux /= 10;
+    num++;
+  }
+
+  ltoa(&mitjana_high, buff);
+  write(1, buff, strlen(buff));
+  write(1, ".", strlen("."));
+
+  for (int i = num; i < 5; i++) write(1, "0", strlen("0"));
+  
+  ltoa(&mitjana_low, buff);
+  write(1, buff, strlen(buff));
+  write(1, " ticks.\n", strlen(" ticks.\n"));
+  
+  return 0;
+}
+
 int __attribute__ ((__section__(".text.main")))
   main(void)
 {
@@ -548,11 +607,16 @@ int __attribute__ ((__section__(".text.main")))
   
   write(1, "\n", strlen("\n"));
   
-  int selected = 10;
-  /************ JOC PROVES 9 IS NOT FULLY FUNCTIONING TODO: FIX IT!*************/
+  int selected = 0;
+  /* selected = 0 per càrrega de treball. 
+     selected > 0 per joc de proves.*/
 
   switch (selected)
     {
+      case 0:
+        if (carrega_de_treball() != 0)   write(1, "Carrega de treball FAILED\n", strlen("Carrega de treball FAILED\n"));
+        else write(1, "Carrega de treball ok\n", strlen("Carrega de treball ok\n"));
+        break;
       case 1:
         if (joc_proves_1() != 0)   write(1, "Error Joc proves 1\n", strlen("Error Joc proves 1\n"));
         else write(1, "Joc proves 1 completed with success\n", strlen("Joc proves 1 completed with success\n"));

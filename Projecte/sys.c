@@ -28,7 +28,7 @@ int check_fd(int fd, int permissions)
   }
   if (permissions!=ESCRIPTURA) {
     current_thread()->errno = EACCES;
-    return EACCES; 
+    return -EACCES; 
   } 
   return 0;
 }
@@ -63,7 +63,6 @@ int sys_getTid()
 {
 	return current_thread()->TID;
 }
-
 
 int global_PID=1000;
 int global_TID=1000;
@@ -260,6 +259,13 @@ extern int zeos_ticks;
 int sys_gettime()
 {
   return zeos_ticks;
+}
+
+int sys_getticks(unsigned long* result)
+{
+  unsigned long c = get_ticks();
+  copy_to_user(&c, result, sizeof(unsigned long));
+  return 0;
 }
 
 void sys_exit()
