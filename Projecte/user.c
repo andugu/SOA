@@ -464,7 +464,6 @@ void joc_proves_9_aux_thread()
   write(1, "\n", strlen("\n"));
   sem_wait(sem);
   sem_post(sem);
-  write(1, "Bye!", strlen("Bye!"));
   pthread_exit((void*)0);
 }
 
@@ -481,17 +480,63 @@ int joc_proves_9_threads()
   return -1;
 }
 
-/* Joc de proves 9: Creating more than 10 process!*/
+/* Joc de proves 9: Having more than 10 threads for 1 process!*/
 int joc_proves_9()
 {
   if (joc_proves_9_threads() != 0) return -1;
+  sem_post(sem);
+  yield();
   write(1, "Errno is: ", strlen("Errno is: "));
   itoa(get_errno(), buff);
   write(1, buff, strlen(buff));
   if (get_errno() != 12) return -1; // ENOMEM = 12
   write(1, "\nError number is correct!\n", strlen("\nError number is correct!\n"));
-  
+  return 0;
+}
+
+void joc_proves_10_aux_thread()
+{
+  sem_wait(sem);
   sem_post(sem);
+  pthread_exit((void*)0);
+}
+
+int joc_proves_10_threads(int first)
+{
+  pthread_t id;
+  sem_init(&sem, 0);
+  int MAX = 8;
+  if (first) MAX = 9; // The reason for MAX is we will be able to make 17 threads (2 of main processes + 1 of idle)
+  for (int w = 0; w < 10; w++) { // in w == 9, it should return error.
+    if (pthread_create(&id,(unsigned int*) &joc_proves_10_aux_thread, (void*)0) < 0) {
+      if (w == MAX) return 0;
+      return -1;
+    }
+  }
+  return -1; // should never reach this point
+}
+
+/* Joc de proves 10: Having more than 20 threads in the system!*/
+int joc_proves_10()
+{
+  int pid = fork();
+  if (pid < 0) return -1;
+  if (joc_proves_10_threads(pid > 0) != 0) return -1;
+  yield();
+  sem_post(sem);
+  write (1, "I am ", strlen("I am "));
+  itoa(getpid(), buff);
+  write(1, buff, strlen(buff));
+  write(1, " and my errno is: ", strlen(" and my errno is: "));
+  itoa(get_errno(), buff);
+  write(1, buff, strlen(buff));
+  if (get_errno() != 12) return -1; // ENOMEM = 12
+  write(1, "\nError number is correct!\n", strlen("\nError number is correct!\n"));
+  if (pid == 0) {
+    exit();
+    return -1;
+  }
+  yield(); // So that the child ends its execution before finishing the testing
   return 0;
 }
 
@@ -503,7 +548,7 @@ int __attribute__ ((__section__(".text.main")))
   
   write(1, "\n", strlen("\n"));
   
-  int selected = 9;
+  int selected = 10;
   /************ JOC PROVES 9 IS NOT FULLY FUNCTIONING TODO: FIX IT!*************/
 
   switch (selected)
@@ -543,6 +588,10 @@ int __attribute__ ((__section__(".text.main")))
       case 9:
         if (joc_proves_9() != 0)   write(1, "Error Joc proves 9\n", strlen("Error Joc proves 9\n"));
         else write(1, "Joc proves 9 completed with success\n", strlen("Joc proves 9 completed with success\n"));
+        break;
+      case 10:
+        if (joc_proves_10() != 0)   write(1, "Error Joc proves 10\n", strlen("Error Joc proves 10\n"));
+        else write(1, "Joc proves 10 completed with success\n", strlen("Joc proves 10 completed with success\n"));
         break;
       default:
         write(1, "No such test\n", strlen("No such test\n"));
