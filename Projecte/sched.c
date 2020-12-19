@@ -20,7 +20,7 @@ struct task_struct *task = &protected_tasks[1]; /* == struct task_struct task[NR
 
 union thread_union protected_thread[NR_THREADS]
   __attribute__((__section__(".data.task")));
-union thread_union *thread = &protected_thread[0]; /* == union thread_union thread[NR_TASKS] */
+union thread_union *thread = &protected_thread[0]; /* == union thread_union thread[NR_THREADS] */
 
 // Semafors
 struct sem_t semafors[NR_SEMAFORS];

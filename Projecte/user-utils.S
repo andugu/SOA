@@ -41,8 +41,6 @@ ENTRY(write)
 
 /* Common code for negative return */
 nok:
-	neg %eax
-	mov %eax, errno
 	mov $-1, %eax
 	popl %ebp
 	ret

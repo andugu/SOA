@@ -472,7 +472,7 @@ int joc_proves_9_threads()
 {
   pthread_t id;
   sem_init(&sem, 0);
-  for (int w = 0; w < 10; w++) { // in w == 10, it should return error.
+  for (int w = 0; w < 10; w++) { // in w == 9, it should return error.
     if (pthread_create(&id,(unsigned int*) &joc_proves_9_aux_thread, (void*)0) < 0) {
       if (w == 9) return 0;
       return -1;
@@ -488,7 +488,7 @@ int joc_proves_9()
   write(1, "Errno is: ", strlen("Errno is: "));
   itoa(get_errno(), buff);
   write(1, buff, strlen(buff));
-  if (get_errno() != 14) return -1;
+  if (get_errno() != 12) return -1; // ENOMEM = 12
   write(1, "\nError number is correct!\n", strlen("\nError number is correct!\n"));
   
   sem_post(sem);

@@ -20,12 +20,16 @@
 #define LECTURA 0
 #define ESCRIPTURA 1
 
-void * get_ebp();
-
 int check_fd(int fd, int permissions)
 {
-  if (fd!=1) return -EBADF; 
-  if (permissions!=ESCRIPTURA) return -EACCES; 
+  if (fd!=1) {
+    current_thread()->errno = EBADF;
+    return -EBADF; 
+  }
+  if (permissions!=ESCRIPTURA) {
+    current_thread()->errno = EACCES;
+    return EACCES; 
+  } 
   return 0;
 }
 
@@ -41,6 +45,7 @@ void system_to_user(void)
 
 int sys_ni_syscall()
 {
+  current_thread()->errno = ENOSYS;
 	return -ENOSYS; 
 }
 
@@ -71,7 +76,10 @@ int ret_from_fork()
 int sys_fork(void)
 {
   /* Any free task_struct and thread_struct? */
-  if (list_empty(&freequeue) || list_empty(&freeThread)) return -ENOMEM;
+  if (list_empty(&freequeue) || list_empty(&freeThread)) {
+    current_thread()->errno = ENOMEM;
+    return -ENOMEM;
+  }
 
   struct list_head *lhcurrent = list_first(&freequeue);
   list_del(lhcurrent);
@@ -103,6 +111,7 @@ int sys_fork(void)
     }
     else 
     {
+      current_thread()->errno = EAGAIN;
       return -EAGAIN;
     }
   }
@@ -133,6 +142,7 @@ int sys_fork(void)
       list_add_tail(thr, &freeThread);
       
       /* Return error */
+      current_thread()->errno = EAGAIN;
       return -EAGAIN; 
     }
   }
@@ -215,25 +225,32 @@ int sys_write(int fd, char *buffer, int nbytes) {
   int bytes_left;
   int ret;
 
-  if ((ret = check_fd(fd, ESCRIPTURA)))
-	return ret;
-  if (nbytes < 0)
-	return -EINVAL;
-  if (!access_ok(VERIFY_READ, buffer, nbytes))
-	return -EFAULT;
+  if ((ret = check_fd(fd, ESCRIPTURA))) {
+    current_thread()->errno = EIO;
+    return ret;
+  }
+  if (nbytes < 0) {
+    current_thread()->errno = EINVAL;
+    return -EINVAL;
+  }
+  if (!access_ok(VERIFY_READ, buffer, nbytes)) {
+    current_thread()->errno = EFAULT;
+    return -EFAULT;
+  }
 
   bytes_left = nbytes;
   while (bytes_left > TAM_BUFFER) {
-	copy_from_user(buffer, localbuffer, TAM_BUFFER);
-	ret = sys_write_console(localbuffer, TAM_BUFFER);
-	bytes_left-=ret;
-	buffer+=ret;
+  	copy_from_user(buffer, localbuffer, TAM_BUFFER);
+  	ret = sys_write_console(localbuffer, TAM_BUFFER);
+  	bytes_left-=ret;
+  	buffer+=ret;
   }
   if (bytes_left > 0) {
-	copy_from_user(buffer, localbuffer,bytes_left);
-	ret = sys_write_console(localbuffer, bytes_left);
-	bytes_left-=ret;
+  	copy_from_user(buffer, localbuffer,bytes_left);
+  	ret = sys_write_console(localbuffer, bytes_left);
+  	bytes_left-=ret;
   }
+  if ((nbytes-bytes_left) < 0) current_thread()->errno = EIO;
   return (nbytes-bytes_left);
 }
 
@@ -292,9 +309,15 @@ extern int remaining_quantum;
 
 int sys_get_stats(int pid, struct stats *st)
 {  
-  if (!access_ok(VERIFY_WRITE, st, sizeof(struct stats))) return -EFAULT; 
+  if (!access_ok(VERIFY_WRITE, st, sizeof(struct stats))) {
+    current_thread()->errno = EFAULT;
+    return -EFAULT; 
+  }
   
-  if (pid < 0) return -EINVAL;
+  if (pid < 0) {
+    current_thread()->errno = EINVAL;
+    return -EINVAL;
+  }
   for (int i = 0; i < NR_TASKS; i++)
   {
     if (task[i].PID == pid)
@@ -304,6 +327,7 @@ int sys_get_stats(int pid, struct stats *st)
       return 0;
     }
   }
+  current_thread()->errno = ESRCH;
   return -ESRCH; /*ESRCH */
 }
 
@@ -312,7 +336,10 @@ int sys_pthread_create(int *id, unsigned int* start_routine, void *arg, unsigned
   struct list_head *lhcurrent = NULL;
     
   /* Any free threads? */
-  if (list_empty(&freeThread) || num_threads(current()) >= NR_THREADSxTASK) return -ENOMEM;
+  if (list_empty(&freeThread) || num_threads(current()) >= NR_THREADSxTASK) {
+    current_thread()->errno = ENOMEM;
+    return -ENOMEM;
+  }
 
   lhcurrent = list_first(&freeThread);
   list_del(lhcurrent);
@@ -331,7 +358,10 @@ int sys_pthread_create(int *id, unsigned int* start_routine, void *arg, unsigned
   init_stats(&thr->t_stats);
   INIT_LIST_HEAD(&(thr->notifyAtExit));
 
-  if (link_process_with_thread(current(), thr) < 0) return -ENOMEM;
+  if (link_process_with_thread(current(), thr) < 0) {
+    current_thread()->errno = ENOMEM;
+    return -ENOMEM;
+  }
   /* link_process_with_thread already adds thr to readyThreads */
 
   /* Allocate User Stack in memory */
@@ -373,13 +403,22 @@ int sys_pthread_join(int id, int *retval)
   struct thread_struct *thr = NULL;
   for (int i = 0; i < NR_THREADSxTASK; ++i)
     if (current()->threads[i] != NULL && current()->threads[i]->TID == id) thr = current()->threads[i];
-  if (thr == NULL) return -ESRCH;
+  if (thr == NULL) {
+    current_thread()->errno = ESRCH;
+    return -ESRCH;
+  }
 
   /* Check if joining self */
-  if (thr == current_thread()) return -ESRCH;
+  if (thr == current_thread()) {
+    current_thread()->errno = ESRCH;
+    return -ESRCH;
+  }
 
   /* Check if thread(id) is joinable */
-  if (thr->joinable == 0) return -EINVAL;
+  if (thr->joinable == 0) {
+    current_thread()->errno = EINVAL;
+    return -EINVAL;
+  }
   else thr->joinable = 0;
 
   if (thr->state != ST_ZOMBIE)
@@ -458,9 +497,15 @@ int sys_sem_init(int* id, unsigned int value)
   struct sem_t *sem;
   
   /* Any free semafor? */
-  if (list_empty(&freeSemafor)) return -ENOMEM;
+  if (list_empty(&freeSemafor)) {
+    current_thread()->errno = ENOMEM;
+    return -ENOMEM;
+  }
   /* Incorrect value */
-  if (value > NR_SEMAFORS || value < 0) return -EINVAL;
+  if (value > NR_SEMAFORS || value < 0) {
+    current_thread()->errno = EINVAL;
+    return -EINVAL;
+  }
 
   lhcurrent = list_first(&freeSemafor);
   list_del(lhcurrent);
@@ -478,12 +523,18 @@ int sys_sem_init(int* id, unsigned int value)
 int sys_sem_wait(int id)
 {
   /* Invalid id */
-  if (id < 0 || id >= NR_SEMAFORS) return -EINVAL;
+  if (id < 0 || id >= NR_SEMAFORS) {
+    current_thread()->errno = EINVAL;
+    return -EINVAL;
+  }
 
   struct sem_t *sem = &semafors[id];
 
   /* Uninited semafor */
-  if (sem->in_use == 0) return -EINVAL;
+  if (sem->in_use == 0) {
+    current_thread()->errno = EINVAL;
+    return -EINVAL;
+  }
 
   sem->count--;
   if (sem->count < 0)
@@ -496,12 +547,18 @@ int sys_sem_wait(int id)
 int sys_sem_post(int id)
 {
   /* Invalid id */
-  if (id < 0 || id >= NR_SEMAFORS) return -EINVAL;
+  if (id < 0 || id >= NR_SEMAFORS) {
+    current_thread()->errno = EINVAL;
+    return -EINVAL;
+  }
 
   struct sem_t *sem = &semafors[id];
 
   /* Uninited semafor */
-  if (sem->in_use == 0) return -EINVAL;
+  if (sem->in_use == 0) {
+    current_thread()->errno = EINVAL;
+    return -EINVAL;
+  }
 
   sem->count++;
   if (sem->count <= 0)
@@ -521,15 +578,24 @@ int sys_sem_post(int id)
 int sys_sem_destroy(int id)
 {
   /* Invalid id */
-  if (id < 0 || id >= NR_SEMAFORS) return -EINVAL;
+  if (id < 0 || id >= NR_SEMAFORS) {
+    current_thread()->errno = EINVAL;
+    return -EINVAL;
+  }
 
   struct sem_t *sem = &semafors[id];
 
   /* Uninited semafor */
-  if (sem->in_use == 0) return -EINVAL;
+  if (sem->in_use == 0) {
+    current_thread()->errno = EINVAL;
+    return -EINVAL;
+  }
 
   /* Semafor still in use */
-  if (!list_empty(&sem->blocked)) return -EINVAL;
+  if (!list_empty(&sem->blocked)) {
+    current_thread()->errno = EINVAL;
+    return -EINVAL;
+  }
 
   sem->count = 0;
   sem->in_use = 0;
