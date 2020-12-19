@@ -14,8 +14,8 @@ ENTRY(SYSENTER_RETURN)
 	pop %ecx
 	ret
 
-/* int errno(); */
-ENTRY(errno)
+/* int get_errno(); */
+ENTRY(get_errno)
 	pushl %ebp
 	movl %esp, %ebp
 	movl $45, %eax

@@ -312,7 +312,7 @@ int sys_pthread_create(int *id, unsigned int* start_routine, void *arg, unsigned
   struct list_head *lhcurrent = NULL;
     
   /* Any free threads? */
-  if (list_empty(&freeThread) || num_threads(current()) >= 10) return -ENOMEM;
+  if (list_empty(&freeThread) || num_threads(current()) >= NR_THREADSxTASK) return -ENOMEM;
 
   lhcurrent = list_first(&freeThread);
   list_del(lhcurrent);
@@ -460,7 +460,7 @@ int sys_sem_init(int* id, unsigned int value)
   /* Any free semafor? */
   if (list_empty(&freeSemafor)) return -ENOMEM;
   /* Incorrect value */
-  if (value > NR_THREADS || value < 0) return -EINVAL;
+  if (value > NR_SEMAFORS || value < 0) return -EINVAL;
 
   lhcurrent = list_first(&freeSemafor);
   list_del(lhcurrent);

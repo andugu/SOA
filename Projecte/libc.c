@@ -6,7 +6,7 @@
 
 #include <types.h>
 
-int errno();
+int errno;
 
 void itoa(int a, char *b)
 {
@@ -47,7 +47,7 @@ void perror()
 {
   char buffer[256];
 
-  itoa(errno(), buffer);
+  itoa(get_errno(), buffer);
 
   write(1, buffer, strlen(buffer));
 }

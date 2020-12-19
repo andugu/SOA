@@ -393,6 +393,8 @@ void inner_thread_switch(union thread_union *new)
   tss.esp0=(int)&(new->stack[KERNEL_STACK_SIZE]);
   setMSR(0x175, 0, (unsigned long)&(new->stack[KERNEL_STACK_SIZE]));
 
+  // NO HACEMOS set_cr3 AQUÍ PORQUÉ SE HACE EN LA FUNCIÓN: sched_next_thread_of_proc
+
   switch_stack((int*)(&current_thread()->kernel_esp), new->thread.kernel_esp);
 }
 
@@ -500,7 +502,6 @@ int unlink_process_and_thread(struct task_struct* pro, struct thread_struct* thr
  * Post: Number of threads in pro*/
 int num_threads(struct task_struct* pro) {
   int n = 0;
-  printk("YE");
   for (int i=0; i < NR_THREADSxTASK; i++) {
      if (pro->threads[i] != NULL && pro->threads[i]->TID != -1) n++;
   }
