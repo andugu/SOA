@@ -13,8 +13,6 @@
 
 #include <sched.h>
 
-#include <p_stats.h>
-
 #include <errno.h>
 
 #define LECTURA 0
@@ -31,16 +29,6 @@ int check_fd(int fd, int permissions)
     return -EACCES; 
   } 
   return 0;
-}
-
-void user_to_system(void)
-{
-  //update_stats(&(current()->p_stats.user_ticks), &(current()->p_stats.elapsed_total_ticks));
-}
-
-void system_to_user(void)
-{
-  //update_stats(&(current()->p_stats.system_ticks), &(current()->p_stats.elapsed_total_ticks));
 }
 
 int sys_ni_syscall()
@@ -146,7 +134,6 @@ int sys_fork(void)
     }
   }
 
-
   /* Copy parent's SYSTEM and CODE to child. */
   page_table_entry *parent_PT = get_PT(current());
   for (pag=0; pag<NUM_PAG_KERNEL; pag++)
@@ -182,37 +169,17 @@ int sys_fork(void)
   INIT_LIST_HEAD(&(lh->readyThreads));
   link_process_with_thread(lh, &(uchild->thread)); // NO possible error
 
-
-  /*  int register_ebp;		// frame pointer
-  // Map Parent's ebp to child's stack
-  register_ebp = (int) get_ebp();
-  register_ebp=(register_ebp - (int)current()) + (int)(uchild);
-
-  uchild->thread.register_esp=register_ebp + sizeof(DWord);
-  DWord temp_ebp=*(DWord*)register_ebp;
-
-  // Prepare child stack for context switch
-  uchild->task.register_esp-=sizeof(DWord);
-  *(DWord*)(uchild->task.register_esp)=(DWord)&ret_from_fork;
-  uchild->task.register_esp-=sizeof(DWord);
-  *(DWord*)(uchild->task.register_esp)=temp_ebp;
-
-  */
   uchild->stack[KERNEL_STACK_SIZE - 19] = 0;
   // Child's kernel_esp points to fake ebp
   uchild->thread.kernel_esp = (unsigned int) &(uchild->stack[KERNEL_STACK_SIZE - 19]);
   // @ret <- &ret_form_fork
   uchild->stack[KERNEL_STACK_SIZE - 18] = (unsigned long int) &ret_from_fork;
 
-  /* Set stats to 0 */
-  init_stats(&(uchild->thread.t_stats));
-  // 		TASK STATS????
-
   /* Queue child process into readyqueue */
   uchild->thread.state=ST_READY;
   lh->state = ST_READY;
   list_add_tail(&(lh->list), &readyqueue);
-  //list_add_tail(&(uchild->thread.list), &(lh->readyThreads)); JA ES FA A LINK_PROCESS_WITH_THREAD
+  //uchild està a readythreads del pare: ho fa la funció LINK_PROCESS_WITH_THREAD
   
   return lh->PID;
 }
@@ -313,30 +280,6 @@ int sys_yield()
 
 extern int remaining_quantum;
 
-int sys_get_stats(int pid, struct stats *st)
-{  
-  if (!access_ok(VERIFY_WRITE, st, sizeof(struct stats))) {
-    current_thread()->errno = EFAULT;
-    return -EFAULT; 
-  }
-  
-  if (pid < 0) {
-    current_thread()->errno = EINVAL;
-    return -EINVAL;
-  }
-  for (int i = 0; i < NR_TASKS; i++)
-  {
-    if (task[i].PID == pid)
-    {
-      task[i].p_stats.remaining_ticks = remaining_quantum;
-      copy_to_user(&(task[i].p_stats), st, sizeof(struct stats));
-      return 0;
-    }
-  }
-  current_thread()->errno = ESRCH;
-  return -ESRCH; /*ESRCH */
-}
-
 int sys_pthread_create(int *id, unsigned int* start_routine, void *arg, unsigned int* ret)
 {
   struct list_head *lhcurrent = NULL;
@@ -361,7 +304,6 @@ int sys_pthread_create(int *id, unsigned int* start_routine, void *arg, unsigned
   *id = thr->TID;
   thr->state = ST_READY;
   thr->joinable = 1;
-  init_stats(&thr->t_stats);
   INIT_LIST_HEAD(&(thr->notifyAtExit));
 
   if (link_process_with_thread(current(), thr) < 0) {
@@ -508,7 +450,7 @@ int sys_sem_init(int* id, unsigned int value)
     return -ENOMEM;
   }
   /* Incorrect value */
-  if (value > NR_SEMAFORS || value < 0) {
+  if (value >= NR_SEMAFORS || value < 0) {
     current_thread()->errno = EINVAL;
     return -EINVAL;
   }

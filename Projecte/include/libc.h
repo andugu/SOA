@@ -6,8 +6,6 @@
 #ifndef __LIBC_H__
 #define __LIBC_H__
 
-#include <stats.h>
-
 typedef int sem_t;
 typedef int pthread_t;
 
@@ -34,8 +32,6 @@ int fork();
 void exit();
 
 int yield();
-
-int get_stats(int pid, struct stats *st);
 
 int pthread_create(pthread_t *id, unsigned int* start_routine, void *arg);
 

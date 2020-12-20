@@ -9,7 +9,6 @@
 #include <mm.h>
 #include <io.h>
 #include <utils.h>
-#include <p_stats.h>
 
 /**
  * Container for the Task array and 2 additional pages (the first and the last one)
@@ -35,17 +34,6 @@ struct list_head readyqueue;
 struct list_head freeThread;
 // freeSemafor queue
 struct list_head freeSemafor;
-
-void init_stats(struct stats *s)
-{
-	s->user_ticks = 0;
-	s->system_ticks = 0;
-	s->blocked_ticks = 0;
-	s->ready_ticks = 0;
-	s->elapsed_total_ticks = get_ticks();
-	s->total_trans = 0;
-	s->remaining_ticks = get_ticks();
-}
 
 /* get_DIR - Returns the Page Directory address for task 't' */
 page_table_entry * get_DIR (struct task_struct *t) 
@@ -117,7 +105,6 @@ void update_process_state_rr(struct task_struct *t, struct list_head *dst_queue)
     if (dst_queue!=&readyqueue) t->state=ST_BLOCKED;
     else
     {
-      update_stats(&(t->p_stats.system_ticks), &(t->p_stats.elapsed_total_ticks));
       t->state=ST_READY;
       if (current_thread() != idle_thread)
         update_thread_state_rr(current_thread(), &(current()->readyThreads));
@@ -135,7 +122,6 @@ void update_thread_state_rr(struct thread_struct *t, struct list_head *dst_queue
     if (dst_queue!=&(t->Dad->readyThreads)) t->state=ST_BLOCKED;
     else
     {
-      //update_stats(&(t->t_stats.system_ticks), &(t->t_stats.elapsed_total_ticks));
       t->state=ST_READY;
     }
   }
@@ -158,10 +144,6 @@ void sched_next_rr(void)
   t->state=ST_RUN;
   remaining_quantum=t->total_quantum;
 
-  update_stats(&(current()->p_stats.system_ticks), &(current()->p_stats.elapsed_total_ticks));
-  //update_stats(&(t->p_stats.ready_ticks), &(t->p_stats.elapsed_total_ticks));
-  t->p_stats.total_trans++;
-
   sched_next_thread_of_proc(t);
 }
 
@@ -181,10 +163,6 @@ void sched_next_thread(void)
   t->state=ST_RUN;
   remaining_thread_quantum=t->total_quantum;
 
-  //update_stats(&(current_thread()->t_stats.system_ticks), &(current_thread()->t_stats.elapsed_total_ticks));
-  update_stats(&(t->t_stats.ready_ticks), &(t->t_stats.elapsed_total_ticks));
-  t->t_stats.total_trans++;
-
   thread_switch((union thread_union*)t);
 }
 
@@ -203,10 +181,6 @@ void sched_next_thread_of_proc(struct task_struct* c)
 
   t->state=ST_RUN;
   remaining_thread_quantum=t->total_quantum;
-
-  //update_stats(&(current_thread()->t_stats.system_ticks), &(current_thread()->t_stats.elapsed_total_ticks));
-  update_stats(&(t->t_stats.ready_ticks), &(t->t_stats.elapsed_total_ticks));
-  t->t_stats.total_trans++;
 
   if (t != current_thread()) {
     // In force_task_switch, a thread could thread_switch with itself
@@ -254,9 +228,6 @@ void init_idle (void)
   c->PID=0;
   c->total_quantum=DEFAULT_QUANTUM;
 
-  init_stats(&c->p_stats);
-  init_stats(&thr->t_stats);
-
   allocate_DIR(c);
 
   /* Return address */
@@ -299,9 +270,6 @@ void init_task1(void)
 
   remaining_quantum = c->total_quantum;
   remaining_thread_quantum = thr->total_quantum;
-
-  init_stats(&c->p_stats);
-  init_stats(&thr->t_stats);
 
   allocate_DIR(c);
 

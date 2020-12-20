@@ -8,7 +8,6 @@
 #include <list.h>
 #include <types.h>
 #include <mm_address.h>
-#include <stats.h>
 
 
 #define NR_TASKS            10
@@ -25,7 +24,6 @@ struct task_struct {
   struct list_head list;                        /* Task struct enqueuing. It MUST be the second field of the struct */
   page_table_entry * dir_pages_baseAddr;        /* Process directory */
   enum state_t state;                           /* State of the process */
-  struct stats p_stats;                         /* Process stats */
   int total_quantum;                            /* Total quantum of the process */
   struct list_head readyThreads;                /* List of threads of process ready to exec */
   struct thread_struct* threads[NR_THREADSxTASK];    /* Pointers to threads of the process */
@@ -37,7 +35,6 @@ struct thread_struct {
   int total_quantum;                         /* Total quantum of the thread */
   struct list_head list;                     /* Thread struct enqueuing */
   enum state_t state;                        /* State of the thread */
-  struct stats t_stats;                      /* Thread stats */
   unsigned int kernel_esp;                   /* Thread kernel %esp reg */
   unsigned long pag_userStack;               /* Logical page number of User Stack */
   int joinable;                              /* 1 if the thread is joinable, 0 otherwise */
@@ -125,7 +122,6 @@ int needs_sched_rr();
 int needs_sched_thread();
 void update_sched_data_rr();
 
-void init_stats(struct stats *s);
 int num_threads(struct task_struct* pro);
 
 int link_process_with_thread(struct task_struct* pro, struct thread_struct* thr);

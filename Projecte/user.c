@@ -62,7 +62,7 @@ void joc_proves_2_aux_thread(int* value)
   int local = *value;
 
   write(1, "Going to wakeup Dad\n", strlen("Going to wakeup Dad\n"));
-  sem_post(sem);
+  if (sem_post(sem) < 0) write (1, "ERROR!!!!!!\n", strlen("ERROR!!!!!!\n"));
   write(1, "Dad awake\n", strlen("Dad awake\n"));
 
   pthread_exit(&local);
@@ -75,23 +75,23 @@ int joc_proves_2()
   int value = 15;
   int ret = 0;
 
-  sem_init(&sem, 0);
+  if (sem_init(&sem, 0) < 0) return -1;;
 
   if (pthread_create(&id,(unsigned int*) &joc_proves_2_aux_thread, &value)) return -1;
 
   /* Wait for slave to become zombie */
   write(1, "Dad going to sleep on signal\n", strlen("Dad going to sleep on signal\n"));
-  sem_wait(sem);
+  if (sem_wait(sem) < 0) return -1;;
   write(1, "Dad wake up from signal\n", strlen("Dad wake up from signal\n"));
 
   write(1, "Going to take join value", strlen("Going to take join value"));
-  pthread_join(id, &ret);
+  if (pthread_join(id, &ret) < 0) return -1;
 
   if (ret != value) return -1;
 
   write(1, "ret == value\n", strlen("ret == value\n"));
 
-  sem_destroy(sem);
+  if (sem_destroy(sem) < 0) return -1;
 
   return 0;
 }
@@ -104,7 +104,7 @@ void joc_proves_3_aux_thread()
   write(1, "\n", strlen("\n"));
 
   write(1, "Going to wakeup Dad\n", strlen("Going to wakeup Dad\n"));
-  sem_post(sem);
+  if (sem_post(sem) < 0) write(1, "Error!!\n", strlen("Error!!\n"));
   write(1, "Dad awake\n", strlen("Dad awake\n"));
 
   pthread_exit((void*) 0);
@@ -116,15 +116,15 @@ int joc_proves_3()
   pthread_t id;
 
   /* Init for sync */
-  sem_init(&sem, 0);
+  if (sem_init(&sem, 0) < 0) return -1;
 
   if (pthread_create(&id,(unsigned int*) &joc_proves_3_aux_thread, (void*)0) < 0) return -1;
 
   write(1, "Dad going to sleep on signal\n", strlen("Dad going to sleep on signal\n"));
-  sem_wait(sem);
+  if (sem_wait(sem) < 0) return -1;
   write(1, "Dad wake up from signal\n", strlen("Dad wake up from signal\n"));
 
-  sem_destroy(sem);
+  if (sem_destroy(sem) < 0) return -1;
 
   return 0;
 }
@@ -148,7 +148,7 @@ int joc_proves_4()
   if (pthread_create(&id,(unsigned int*) &joc_proves_4_aux_thread, (void*)0) < 0) return -1;
 
   write(1, "Dad enters pthread_join()\n", strlen("Dad enters pthread_join()\n"));
-  pthread_join(id, &ret);
+  if (pthread_join(id, &ret) < 0) return -1;
   write(1, "Dad exited pthread_join()\n", strlen("Dad exited pthread_join()\n"));
 
   if (ret != 5)
@@ -164,7 +164,7 @@ int joc_proves_5_aux_thread(int* param)
   write(1, buff, strlen(buff));
   write(1, "\n", strlen("\n"));
 
-  sem_post(sem);
+  if (sem_post(sem) < 0) return -1;
 
   *param += 5;
 
@@ -178,7 +178,7 @@ int joc_proves_5_aux2_thread(int* param)
   write(1, buff, strlen(buff));
   write(1, "\n", strlen("\n"));
 
-  sem_wait(sem);
+  if (sem_wait(sem) < 0) return -1;
 
   *param += 5;
 
@@ -198,14 +198,14 @@ int joc_proves_5()
   global = 0;
 
   /* Test reinit of semafor */
-  sem_init(&sem, 0);
+  if (sem_init(&sem, 0) < 0) return -1;
   itoa(sem, buff);
   write(1, buff, strlen(buff));
   write(1, "\n", strlen(buff));
 
-  sem_destroy(sem);
+  if (sem_destroy(sem) < 0) return -1;
 
-  sem_init(&sem, 0);
+  if (sem_init(&sem, 0) < 0) return -1;
   itoa(sem, buff);
   write(1, buff, strlen(buff));
   write(1, "\n", strlen(buff));
@@ -215,13 +215,13 @@ int joc_proves_5()
   if (pthread_create(&id3,(unsigned int*) &joc_proves_5_aux_thread, &param3) < 0) return -1;
 
   write(1, "Dad gona sleep\n", strlen("Dad gona sleep\n"));
-  sem_wait(sem);
+  if (sem_wait(sem) < 0) return -1;
   write(1, "Dad gona exit\n", strlen("Dad gona exit\n"));
 
-  pthread_join(id1, &ret1);
+  if (pthread_join(id1, &ret1) < 0) return -1;
   /* Holds exit status */
-  pthread_join(id2, &ret2);
-  pthread_join(id3, &ret3);
+  if (pthread_join(id2, &ret2) < 0) return -1;
+  if (pthread_join(id3, &ret3) < 0) return -1;
 
   write(1, "Values as follow: param1, ret1, param2, param3, ret3\n", strlen("Values as follow: param1, ret1, param2, param3, ret3\n"));
 
@@ -267,42 +267,42 @@ int joc_proves_6()
   int ret1, ret2, ret3, ret4, ret5, ret6;
 
   if (pthread_create(&id,(unsigned int*) &joc_proves_6_aux_thread, (void*) 0) < 0) return -1;
-  pthread_join(id, &ret1);
+  if (pthread_join(id, &ret1) < 0) return -1;
   write(1, "Thread 1 returned; ", strlen("Thread 1 returned; "));
   itoa(ret1, buff);
   write(1, buff, strlen(buff));
   write(1, "\n", strlen(buff));
 
   if (pthread_create(&id,(unsigned int*) &joc_proves_6_aux_thread, (void*) 0) < 0) return -1;
-  pthread_join(id, &ret2);
+  if (pthread_join(id, &ret2) < 0) return -1;
   write(1, "Thread 2 returned; ", strlen("Thread 2 returned; "));
   itoa(ret2, buff);
   write(1, buff, strlen(buff));
   write(1, "\n", strlen(buff));
 
   if (pthread_create(&id,(unsigned int*) &joc_proves_6_aux_thread, (void*) 0) < 0) return -1;
-  pthread_join(id, &ret3);
+  if (pthread_join(id, &ret3) < 0) return -1;
   write(1, "Thread 3 returned; ", strlen("Thread 3 returned; "));
   itoa(ret3, buff);
   write(1, buff, strlen(buff));
   write(1, "\n", strlen(buff));
 
   if (pthread_create(&id,(unsigned int*) &joc_proves_6_aux_thread, (void*) 0) < 0) return -1;
-  pthread_join(id, &ret4);
+  if (pthread_join(id, &ret4) < 0) return -1;
   write(1, "Thread 4 returned; ", strlen("Thread 4 returned; "));
   itoa(ret4, buff);
   write(1, buff, strlen(buff));
   write(1, "\n", strlen(buff));
 
   if (pthread_create(&id,(unsigned int*) &joc_proves_6_aux_thread, (void*) 0) < 0) return -1;
-  pthread_join(id, &ret5);
+  if (pthread_join(id, &ret5) < 0) return -1;
   write(1, "Thread 5 returned; ", strlen("Thread 5 returned; "));
   itoa(ret5, buff);
   write(1, buff, strlen(buff));
   write(1, "\n", strlen(buff));
 
   if (pthread_create(&id,(unsigned int*) &joc_proves_6_aux_thread, (void*) 0) < 0) return -1;
-  pthread_join(id, &ret6);
+  if (pthread_join(id, &ret6) < 0) return -1;
   write(1, "Thread 6 returned; ", strlen("Thread 6 returned; "));
   itoa(ret6, buff);
   write(1, buff, strlen(buff));
@@ -324,6 +324,7 @@ void joc_proves_7_aux_thread()
 
   write(1, "My main thread should come back to CPU\n", strlen("My main thread should come back to CPU\n"));
   pthread_exit((void*) 0);
+  write(1, "ERROR!!\n", strlen("ERROR!!\n"));
 }
 
 /* Joc de proves 7: Thread_switch between multiple threads and multiple process to test process management */
@@ -375,7 +376,7 @@ int joc_proves_7()
     itoa(getTid(), buff);
     write(1, buff, strlen(buff));
     write(1, "\n", strlen("\n"));
-  } else perror();
+  } else return -1;
 
   if (pid == 0) {
     write(1, "Bye, I'm leaving!\n", strlen("Bye, I'm leaving!\n"));
@@ -415,6 +416,7 @@ void joc_proves_8_aux_thread()
     pthread_t id;
     if (pthread_create(&id,(unsigned int*) &joc_proves_8_aux_thread2, (void*)0) < 0) write(1, "Error!!!", strlen("Error!!!"));
     exit();
+    write(1, "ERROR!!!\n", strlen("ERROR!!!\n"));
   } else {
     if (yield() < 0) write(1, "Error!!!", strlen("Error!!!"));
     write(1, "My {PID,TID} is: ", strlen("My {PID,TID} is: "));
@@ -427,9 +429,10 @@ void joc_proves_8_aux_thread()
   }
 
   pthread_exit((void*) 0);
+  write(1,"ERROR!!\n", strlen("ERROR!!\n"));
 }
 
-/* Joc de proves 8: A pthread doing a Fork()! && doing an exit with pthread alives!*/
+/* Joc de proves 8: A pthread doing a Fork()! && doing an exit with pthread alive!*/
 int joc_proves_8()
 {
   pthread_t id;
@@ -462,15 +465,16 @@ void joc_proves_9_aux_thread()
   itoa(getTid(), buff);
   write(1, buff, strlen(buff));
   write(1, "\n", strlen("\n"));
-  sem_wait(sem);
-  sem_post(sem);
+  if (sem_wait(sem) < 0) write(1, "ERROR!!\n", strlen("ERROR!!\n"));
+  if (sem_post(sem) < 0) write(1, "ERROR!!\n", strlen("ERROR!!\n"));
   pthread_exit((void*)0);
+  write(1, "ERROR!!\n", strlen("ERROR!!\n"));
 }
 
 int joc_proves_9_threads()
 {
   pthread_t id;
-  sem_init(&sem, 0);
+  if (sem_init(&sem, 0) < 0) return -1;
   for (int w = 0; w < 10; w++) { // in w == 9, it should return error.
     if (pthread_create(&id,(unsigned int*) &joc_proves_9_aux_thread, (void*)0) < 0) {
       if (w == 9) return 0;
@@ -480,12 +484,12 @@ int joc_proves_9_threads()
   return -1;
 }
 
-/* Joc de proves 9: Having more than 10 threads for 1 process!*/
+/* Joc de proves 9: Having more than 10 threads for 1 process! */
 int joc_proves_9()
 {
   if (joc_proves_9_threads() != 0) return -1;
-  sem_post(sem);
-  yield();
+  if (sem_post(sem) < 0) return -1;
+  if (yield() < 0) return -1;
   write(1, "Errno is: ", strlen("Errno is: "));
   itoa(get_errno(), buff);
   write(1, buff, strlen(buff));
@@ -496,15 +500,15 @@ int joc_proves_9()
 
 void joc_proves_10_aux_thread()
 {
-  sem_wait(sem);
-  sem_post(sem);
+  if (sem_wait(sem) < 0) write(1, "ERROR!!\n", strlen("ERROR!!\n"));
+  if (sem_post(sem) < 0) write(1, "ERROR!!\n", strlen("ERROR!!\n"));
   pthread_exit((void*)0);
 }
 
 int joc_proves_10_threads(int first)
 {
   pthread_t id;
-  sem_init(&sem, 0);
+  if (sem_init(&sem, 0) < 0) return -1;
   int MAX = 8;
   if (first) MAX = 9; // The reason for MAX is we will be able to make 17 threads (2 of main processes + 1 of idle)
   for (int w = 0; w < 10; w++) { // in w == 9, it should return error.
@@ -522,8 +526,8 @@ int joc_proves_10()
   int pid = fork();
   if (pid < 0) return -1;
   if (joc_proves_10_threads(pid > 0) != 0) return -1;
-  yield();
-  sem_post(sem);
+  if (yield() < 0) return -1;
+  if (sem_post(sem) < 0) return -1;
   write (1, "I am ", strlen("I am "));
   itoa(getpid(), buff);
   write(1, buff, strlen(buff));
@@ -536,13 +540,65 @@ int joc_proves_10()
     exit();
     return -1;
   }
-  yield(); // So that the child ends its execution before finishing the testing
+  if (yield() < 0) return -1; // So that the child ends its execution before finishing the testing
   return 0;
+}
+
+/* Joc de proves 11: Having more than 10 processes in the system! */
+int joc_proves_11()
+{
+  write (1, "I am ", strlen("I am "));
+  itoa(getpid(), buff);
+  write(1, buff, strlen(buff));
+  write (1, " and I am going to occupy all TCB\n", strlen(" and I am going to occupy all TCB\n"));
+  for (int i = 0; i < 10; i++) { // i should never value more than 8
+    int pid = fork();
+    if (pid == 0) {
+      write (1, "I am ", strlen("I am "));
+      itoa(getpid(), buff);
+      write(1, buff, strlen(buff));
+      write (1, "\n", strlen("\n"));
+      exit();
+      return -1; // Should never reach this point
+    } else if (pid < 0) { 
+      if (i == 8 && get_errno() == 12) { // 10 PCB - (Init+idle) = 8 && ENOMEM = 12
+        if (yield() < 0) return -1;
+        write(1, "All TCB have been ocupied!\nError number is correct!\n", strlen("All TCB have been ocupied!\nError number is correct!\n"));
+        return 0;
+      }
+      return -1;
+    }
+  }
+  return -1; // Should never reach this point
+}
+
+/* Joc de proves 12: Having more than 20 semaphores in the system! */
+int joc_proves_12()
+{
+  sem_t sem[21];
+  int err;
+  for (int i = 0; i < 30; i++) { // i should never value more than 20
+    err = sem_init(&sem[i], 1);
+    if (err < 0) {
+      if (i == 20 && get_errno() == 12) {  // ENOMEM = 12
+        for (int e = 0; e < i; e++) if(sem_destroy(sem[e]) < 0) return -1; // We destroy all the created semaphores
+        write(1, "We tried creating one more semaphore, but an error appeared.\nError number is correct!\n",strlen("We tried creating one more semaphore, but an error appeared.\nError number is correct!\n"));
+        return 0;
+      }
+      return -1;
+    }
+    write(1, "Semaphore number ", strlen("Semaphore number "));
+    itoa(i+1, buff);
+    write(1, buff, strlen(buff));
+    write(1, " has been created!\n", strlen(" has been created!\n"));
+  }
+  return -1; // Should never reach this point
 }
 
 void carrega_de_treball_auxiliar() 
 {
   pthread_exit((void*)0);
+  write(1, "ERROR!!\n", strlen("ERROR!!\n"));
 }
 
 int carrega_de_treball() 
@@ -554,7 +610,7 @@ int carrega_de_treball()
     for (int i = 0; i < 9; i++) {
       if (pthread_create(&id[i],(unsigned int*) &carrega_de_treball_auxiliar, (void*)0) < 0) return -1;
     }
-    yield();
+    if (yield() < 0) return -1;
     for (int i = 0; i < 9; i++) {
       if (pthread_join(id[i],(void*)0) < 0) return -1;
     }
@@ -575,18 +631,19 @@ int carrega_de_treball()
   write(1, buff, strlen(buff));
   write(1, " ticks.\nPer tant, la mitjana de crear i destruir un thread es de: ", strlen(" ticks.\nPer tant, la mitjana de crear i destruir un thread es de: "));
   
+  /* We use this variables to avoid using float or doubles */
   unsigned long mitjana = diff*100/9;
-  unsigned long mitjana_high = mitjana/100000;
-  unsigned long mitjana_low = mitjana%100000;
+  unsigned long mitjana_high = mitjana/100000; // Natural part of the number
+  unsigned long mitjana_low = mitjana%100000; // Decimal part of the number
   unsigned long mitjana_low_aux = mitjana_low;
   
-  int num = 0;
+  int num = 0; // num is used to calculate the number of '0' that has the decimal part before the first integer
   while(mitjana_low_aux > 0) {
     mitjana_low_aux /= 10;
     num++;
   }
 
-  ltoa(&mitjana_high, buff);
+  ltoa(&mitjana_high, buff); /* ltoa(unsigned long* d, char *b); -> long to ascii */
   write(1, buff, strlen(buff));
   write(1, ".", strlen("."));
 
@@ -607,7 +664,7 @@ int __attribute__ ((__section__(".text.main")))
   
   write(1, "\n", strlen("\n"));
   
-  int selected = 0;
+  int selected = 12;
   /* selected = 0 per càrrega de treball. 
      selected > 0 per joc de proves.*/
 
@@ -615,7 +672,7 @@ int __attribute__ ((__section__(".text.main")))
     {
       case 0:
         if (carrega_de_treball() != 0)   write(1, "Carrega de treball FAILED\n", strlen("Carrega de treball FAILED\n"));
-        else write(1, "Carrega de treball ok\n", strlen("Carrega de treball ok\n"));
+        else write(1, "Carrega de treball OK\n", strlen("Carrega de treball OK\n"));
         break;
       case 1:
         if (joc_proves_1() != 0)   write(1, "Error Joc proves 1\n", strlen("Error Joc proves 1\n"));
@@ -656,6 +713,14 @@ int __attribute__ ((__section__(".text.main")))
       case 10:
         if (joc_proves_10() != 0)   write(1, "Error Joc proves 10\n", strlen("Error Joc proves 10\n"));
         else write(1, "Joc proves 10 completed with success\n", strlen("Joc proves 10 completed with success\n"));
+        break;
+      case 11:
+        if (joc_proves_11() != 0)   write(1, "Error Joc proves 11\n", strlen("Error Joc proves 11\n"));
+        else write(1, "Joc proves 11 completed with success\n", strlen("Joc proves 11 completed with success\n"));
+        break;
+      case 12:
+        if (joc_proves_12() != 0)   write(1, "Error Joc proves 12\n", strlen("Error Joc proves 12\n"));
+        else write(1, "Joc proves 12 completed with success\n", strlen("Joc proves 12 completed with success\n"));
         break;
       default:
         write(1, "No such test\n", strlen("No such test\n"));

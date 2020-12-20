@@ -115,21 +115,6 @@ ENTRY(yield)
 	popl %ebp
 	ret
 
-/* int get_stats(int pid, struct stats *st) */
-ENTRY(get_stats)
-	pushl %ebp
-	movl %esp, %ebp
-	pushl %ebx;  // Save EBX, ESI and EDI if modified
-	movl $35, %eax
-	movl 0x8(%ebp), %ebx;	//pid
-	movl 0xC(%ebp), %ecx;	//st
-	call syscall_sysenter
-	popl %ebx
-	test %eax, %eax
-	js nok	// if (eax < 0) -->
-	popl %ebp
-	ret
-
 /* int pthread_create(pthread_t *id, unsigned int* start_routine, void *arg) */
 ENTRY(pthread_create)
 	pushl %ebp

@@ -27,7 +27,6 @@ void block_process(struct list_head *block_queue);
 void unblock_process(struct task_struct *blocked);
 
 void init_sched_policy();
-struct stats * get_task_stats(struct task_struct *t);
 struct list_head * get_task_list(struct task_struct *t);
 
 void zeos_console_init();
