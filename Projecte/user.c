@@ -606,7 +606,8 @@ int carrega_de_treball()
   pthread_t id[9];
   unsigned long inici;
   if (getticks(&inici) < 0) return -1;
-  for (int w = 0; w < 1000; w++) {
+  int NUMBER_OP = 1000; /* By changing this number, one can decide the number of operations to use for the analysis */
+  for (int w = 0; w < NUMBER_OP; w++) {
     for (int i = 0; i < 9; i++) {
       if (pthread_create(&id[i],(unsigned int*) &carrega_de_treball_auxiliar, (void*)0) < 0) return -1;
     }
@@ -629,12 +630,15 @@ int carrega_de_treball()
   write(1, " ticks.\nI aixo es una diferencia de ", strlen(" ticks.\nI aixo es una diferencia de "));
   ltoa(&diff, buff);
   write(1, buff, strlen(buff));
-  write(1, " ticks.\nPer tant, la mitjana de crear i destruir un thread es de: ", strlen(" ticks.\nPer tant, la mitjana de crear i destruir un thread es de: "));
+  write(1, " ticks.\nHem fet ", strlen(" ticks.\nHem fet "));
+  itoa(NUMBER_OP*9, buff);
+  write(1, buff, strlen(buff));
+  write(1, " operacions.\nPer tant, la mitjana de crear i destruir un thread es de: ", strlen(" operacions.\nPer tant, la mitjana de crear i destruir un thread es de: "));
   
   /* We use this variables to avoid using float or doubles */
   unsigned long mitjana = diff*100/9;
-  unsigned long mitjana_high = mitjana/100000; // Natural part of the number
-  unsigned long mitjana_low = mitjana%100000; // Decimal part of the number
+  unsigned long mitjana_high = mitjana/(100*NUMBER_OP); // Natural part of the number
+  unsigned long mitjana_low = mitjana%(100*NUMBER_OP); // Decimal part of the number
   unsigned long mitjana_low_aux = mitjana_low;
   
   int num = 0; // num is used to calculate the number of '0' that has the decimal part before the first integer
@@ -642,12 +646,18 @@ int carrega_de_treball()
     mitjana_low_aux /= 10;
     num++;
   }
+  int aux = NUMBER_OP;
+  int dec = 1; // dec is used to calculate the number of digits of mitjana_low
+  while(aux > 0) {
+    aux /= 10;
+    dec++;
+  }
 
   ltoa(&mitjana_high, buff); /* ltoa(unsigned long* d, char *b); -> long to ascii */
   write(1, buff, strlen(buff));
   write(1, ".", strlen("."));
 
-  for (int i = num; i < 5; i++) write(1, "0", strlen("0"));
+  for (int i = num; i < dec; i++) write(1, "0", strlen("0"));
   
   ltoa(&mitjana_low, buff);
   write(1, buff, strlen(buff));
@@ -664,7 +674,7 @@ int __attribute__ ((__section__(".text.main")))
   
   write(1, "\n", strlen("\n"));
   
-  int selected = 12;
+  int selected = 0;
   /* selected = 0 per càrrega de treball. 
      selected > 0 per joc de proves.*/
 
